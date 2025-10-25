@@ -14,6 +14,161 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// ANSI color codes for terminal output
+const (
+	colorReset  = "\033[0m"
+	colorGray   = "\033[90m"
+	colorCyan   = "\033[36m"
+	colorGreen  = "\033[32m"
+	colorYellow = "\033[33m"
+	colorBlue   = "\033[34m"
+)
+
+// buildWorkspaceMenuItems creates the workspace list section of the menu
+func buildWorkspaceMenuItems(cfg *config.Config, wsMgr *workspace.Manager, sessionMgr *session.Manager) []string {
+	var lines []string
+
+	if len(cfg.Workspaces) == 0 {
+		return lines
+	}
+
+	// Add section header
+	lines = append(lines, colorGray+"──── WORKSPACES ────"+colorReset)
+
+	// Build workspace list sorted by last active
+	type wsEntry struct {
+		name string
+		ws   *config.Workspace
+	}
+	var entries []wsEntry
+	for name, ws := range cfg.Workspaces {
+		entries = append(entries, wsEntry{name: name, ws: ws})
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].ws.LastActive.After(entries[j].ws.LastActive)
+	})
+
+	// Add workspace items
+	for _, entry := range entries {
+		ws := entry.ws
+		summary := wsMgr.GetSummary(entry.name)
+		lastActive := formatTimeAgo(ws.LastActive)
+
+		// Get tmux session state
+		sessionName := sessionMgr.GetSessionName(entry.name)
+		sessionState, err := sessionMgr.GetSessionState(sessionName)
+		if err != nil {
+			sessionState = "unknown"
+		}
+
+		// Color code status based on session state
+		statusColor := colorGray
+		if sessionState == "attached" {
+			statusColor = colorGreen
+		} else if sessionState == "detached" {
+			statusColor = colorYellow
+		}
+
+		// Format: name [status] summary (time)
+		line := fmt.Sprintf("%s %s[%s]%s %s %s(%s)%s",
+			colorCyan+entry.name+colorReset,
+			statusColor,
+			sessionState,
+			colorReset,
+			summary,
+			colorGray,
+			lastActive,
+			colorReset,
+		)
+		lines = append(lines, line)
+	}
+
+	return lines
+}
+
+// buildActionMenuItems creates the action items section of the menu
+func buildActionMenuItems(cfg *config.Config) []string {
+	var lines []string
+
+	// Add section header
+	lines = append(lines, colorGray+"──── ACTIONS ────"+colorReset)
+
+	// Add create workspace action
+	lines = append(lines, colorBlue+"→"+colorReset+" Create new workspace")
+
+	// Add archive action if there are workspaces
+	if len(cfg.Workspaces) > 0 {
+		lines = append(lines, colorBlue+"→"+colorReset+" Archive workspace")
+	}
+
+	// Add clone-related actions if clones exist
+	if len(cfg.Clones) > 0 {
+		lines = append(lines, fmt.Sprintf(colorBlue+"→"+colorReset+" Browse clones "+colorGray+"(%d available)"+colorReset, len(cfg.Clones)))
+	}
+
+	// Add remote-related actions if remotes exist
+	if len(cfg.Remotes) > 0 {
+		lines = append(lines, fmt.Sprintf(colorBlue+"→"+colorReset+" Create new clone "+colorGray+"(%d remotes)"+colorReset, len(cfg.Remotes)))
+		lines = append(lines, fmt.Sprintf(colorBlue+"→"+colorReset+" List remotes "+colorGray+"(%d)"+colorReset, len(cfg.Remotes)))
+	}
+
+	return lines
+}
+
+// runFzfMenu runs fzf with the given input and returns the selected item
+func runFzfMenu(input string) (string, error) {
+	// Get path to self for preview command
+	self, err := os.Executable()
+	if err != nil {
+		return "", fmt.Errorf("failed to get executable path: %w", err)
+	}
+
+	// Build fzf command with preview
+	previewCmd := fmt.Sprintf("sh -c '%s preview-menu \"$1\"' _ {}", self)
+	fzfCmd := exec.Command("fzf",
+		"--ansi",
+		"--no-sort",
+		"--layout=reverse",
+		"--height=100%",
+		"--preview="+previewCmd,
+		"--preview-window=right:50%:wrap",
+		"--header=Select an option (Ctrl-C to cancel)",
+		"--prompt=claude-workspace> ",
+	)
+
+	// Set up pipes
+	fzfCmd.Stdin = strings.NewReader(input)
+	fzfCmd.Stderr = os.Stderr
+
+	var outBuf bytes.Buffer
+	fzfCmd.Stdout = &outBuf
+
+	// Run fzf
+	if err := fzfCmd.Run(); err != nil {
+		// User cancelled (Ctrl-C)
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			if exitErr.ExitCode() == 130 {
+				return "", nil
+			}
+		}
+		return "", fmt.Errorf("fzf failed: %w", err)
+	}
+
+	// Extract selection
+	selected := strings.TrimSpace(outBuf.String())
+	return selected, nil
+}
+
+// parseWorkspaceSelection extracts the workspace name from a menu selection
+func parseWorkspaceSelection(selected string) (string, error) {
+	// Parse workspace name (everything before '[')
+	bracketIdx := strings.Index(selected, "[")
+	if bracketIdx == -1 {
+		return "", fmt.Errorf("invalid selection format")
+	}
+	return strings.TrimSpace(selected[:bracketIdx]), nil
+}
+
 var selectCmd = &cobra.Command{
 	Use:   "select",
 	Short: "Interactive super-prompt for all workspace operations",
@@ -33,137 +188,30 @@ var selectCmd = &cobra.Command{
 		wsMgr := workspace.NewManager(cfg.Settings.WorkspaceDir)
 		sessionMgr := session.NewManager()
 
-		// ANSI color codes
-		const (
-			colorReset  = "\033[0m"
-			colorGray   = "\033[90m"
-			colorCyan   = "\033[36m"
-			colorGreen  = "\033[32m"
-			colorYellow = "\033[33m"
-			colorBlue   = "\033[34m"
-		)
-
 		// Build menu options
 		var inputLines []string
 
-		// Add workspaces section header FIRST
-		if len(cfg.Workspaces) > 0 {
-			inputLines = append(inputLines, colorGray+"──── WORKSPACES ────"+colorReset)
-		}
+		// Add workspace items
+		workspaceLines := buildWorkspaceMenuItems(cfg, wsMgr, sessionMgr)
+		inputLines = append(inputLines, workspaceLines...)
 
-		// Build workspace list sorted by last active
-		type wsEntry struct {
-			name string
-			ws   *config.Workspace
-		}
-		var entries []wsEntry
-		for name, ws := range cfg.Workspaces {
-			entries = append(entries, wsEntry{name: name, ws: ws})
-		}
-		sort.Slice(entries, func(i, j int) bool {
-			return entries[i].ws.LastActive.After(entries[j].ws.LastActive)
-		})
-
-		// Add workspace items AFTER header
-		for _, entry := range entries {
-			ws := entry.ws
-			summary := wsMgr.GetSummary(entry.name)
-			lastActive := formatTimeAgo(ws.LastActive)
-
-			// Get tmux session state
-			sessionName := sessionMgr.GetSessionName(entry.name)
-			sessionState, err := sessionMgr.GetSessionState(sessionName)
-			if err != nil {
-				sessionState = "unknown"
-			}
-
-			// Color code status based on session state
-			statusColor := colorGray
-			if sessionState == "attached" {
-				statusColor = colorGreen
-			} else if sessionState == "detached" {
-				statusColor = colorYellow
-			}
-
-			// Format: name [status] summary (time)
-			line := fmt.Sprintf("%s %s[%s]%s %s %s(%s)%s",
-				colorCyan+entry.name+colorReset,
-				statusColor,
-				sessionState,
-				colorReset,
-				summary,
-				colorGray,
-				lastActive,
-				colorReset,
-			)
-			inputLines = append(inputLines, line)
-		}
-
+		// Add separator if there are workspaces
 		if len(cfg.Workspaces) > 0 {
 			inputLines = append(inputLines, "")
 		}
 
-		// Add actions section header FIRST
-		inputLines = append(inputLines, colorGray+"──── ACTIONS ────"+colorReset)
+		// Add action items
+		actionLines := buildActionMenuItems(cfg)
+		inputLines = append(inputLines, actionLines...)
 
-		// Add action items AFTER header
-		inputLines = append(inputLines, colorBlue+"→"+colorReset+" Create new workspace")
-
-		if len(cfg.Workspaces) > 0 {
-			inputLines = append(inputLines, colorBlue+"→"+colorReset+" Archive workspace")
-		}
-
-		if len(cfg.Clones) > 0 {
-			inputLines = append(inputLines, fmt.Sprintf(colorBlue+"→"+colorReset+" Browse clones "+colorGray+"(%d available)"+colorReset, len(cfg.Clones)))
-		}
-
-		if len(cfg.Remotes) > 0 {
-			inputLines = append(inputLines, fmt.Sprintf(colorBlue+"→"+colorReset+" Create new clone "+colorGray+"(%d remotes)"+colorReset, len(cfg.Remotes)))
-			inputLines = append(inputLines, fmt.Sprintf(colorBlue+"→"+colorReset+" List remotes "+colorGray+"(%d)"+colorReset, len(cfg.Remotes)))
-		}
-
+		// Run fzf menu
 		input := strings.Join(inputLines, "\n")
-
-		// Get path to self for preview command
-		self, err := os.Executable()
+		selected, err := runFzfMenu(input)
 		if err != nil {
-			return fmt.Errorf("failed to get executable path: %w", err)
+			return err
 		}
 
-		// Build fzf command with preview
-		// Use sh -c to properly pass the selection as a quoted argument
-		previewCmd := fmt.Sprintf("sh -c '%s preview-menu \"$1\"' _ {}", self)
-		fzfCmd := exec.Command("fzf",
-			"--ansi",
-			"--no-sort",
-			"--layout=reverse",
-			"--height=100%",
-			"--preview="+previewCmd,
-			"--preview-window=right:50%:wrap",
-			"--header=Select an option (Ctrl-C to cancel)",
-			"--prompt=claude-workspace> ",
-		)
-
-		// Set up pipes
-		fzfCmd.Stdin = strings.NewReader(input)
-		fzfCmd.Stderr = os.Stderr
-
-		var outBuf bytes.Buffer
-		fzfCmd.Stdout = &outBuf
-
-		// Run fzf
-		if err := fzfCmd.Run(); err != nil {
-			// User cancelled (Ctrl-C)
-			if exitErr, ok := err.(*exec.ExitError); ok {
-				if exitErr.ExitCode() == 130 {
-					return nil
-				}
-			}
-			return fmt.Errorf("fzf failed: %w", err)
-		}
-
-		// Extract selection
-		selected := strings.TrimSpace(outBuf.String())
+		// Handle empty selection (user cancelled)
 		if selected == "" {
 			return nil
 		}
@@ -182,12 +230,11 @@ var selectCmd = &cobra.Command{
 			return nil
 		}
 
-		// Parse workspace name (everything before '[')
-		bracketIdx := strings.Index(selected, "[")
-		if bracketIdx == -1 {
-			return fmt.Errorf("invalid selection format")
+		// Parse workspace name
+		workspaceName, err := parseWorkspaceSelection(selected)
+		if err != nil {
+			return err
 		}
-		workspaceName := strings.TrimSpace(selected[:bracketIdx])
 
 		// Call start command for the selected workspace
 		return startCmd.RunE(cmd, []string{workspaceName})
