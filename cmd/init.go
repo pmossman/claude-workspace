@@ -1,7 +1,10 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/pmossman/claude-workspace/internal/config"
 	"github.com/pmossman/claude-workspace/internal/session"
@@ -32,11 +35,44 @@ var initCmd = &cobra.Command{
 
 		fmt.Println("✓ Initialized claude-workspace")
 		fmt.Printf("  Config directory: %s\n", cfg.Settings.WorkspaceDir)
+
+		// Check if shell integration is already installed
+		installed, _, err := isShellIntegrationInstalled()
+		if err != nil {
+			// If we can't check (unsupported shell), just show next steps
+			fmt.Println("\nNext steps:")
+			fmt.Println("  1. Install shell integration: claude-workspace install-shell")
+			fmt.Println("  2. Add a remote: cw add-remote <name> <git-url> --clone-dir <path>")
+			fmt.Println("  3. Create a workspace: cw create")
+			fmt.Println("\nOr use the interactive selector: cw")
+			return nil
+		}
+
+		if !installed {
+			// Prompt to install shell integration
+			fmt.Println()
+			fmt.Print("Install shell integration now? [Y/n]: ")
+			reader := bufio.NewReader(os.Stdin)
+			response, _ := reader.ReadString('\n')
+			response = strings.TrimSpace(strings.ToLower(response))
+
+			if response == "" || response == "y" || response == "yes" {
+				// Run install-shell command
+				if err := installShellCmd.RunE(cmd, args); err != nil {
+					return fmt.Errorf("failed to install shell integration: %w", err)
+				}
+			} else {
+				fmt.Println("\nSkipped shell integration. You can install it later with:")
+				fmt.Println("  claude-workspace install-shell")
+			}
+		} else {
+			fmt.Println("\n✓ Shell integration already installed")
+		}
+
 		fmt.Println("\nNext steps:")
-		fmt.Println("  1. Install shell integration: cw install-shell")
-		fmt.Println("  2. Add a remote: cw add-remote <name> <git-url> --clone-dir <path>")
-		fmt.Println("  3. Create a workspace: cw create <name> --remote <remote-name>")
-		fmt.Println("  Or use the interactive selector: cw")
+		fmt.Println("  1. Add a remote: cw add-remote <name> <git-url> --clone-dir <path>")
+		fmt.Println("  2. Create a workspace: cw create")
+		fmt.Println("\nOr use the interactive selector: cw")
 
 		return nil
 	},

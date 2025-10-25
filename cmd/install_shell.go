@@ -32,6 +32,34 @@ cw() {
 }
 `
 
+// isShellIntegrationInstalled checks if shell integration is already installed
+func isShellIntegrationInstalled() (bool, string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return false, "", fmt.Errorf("failed to get home directory: %w", err)
+	}
+
+	// Detect shell
+	shell := os.Getenv("SHELL")
+	var rcFile string
+	if strings.Contains(shell, "zsh") {
+		rcFile = filepath.Join(home, ".zshrc")
+	} else if strings.Contains(shell, "bash") {
+		rcFile = filepath.Join(home, ".bashrc")
+	} else {
+		return false, "", fmt.Errorf("unsupported shell: %s (only bash and zsh supported)", shell)
+	}
+
+	// Check if already installed
+	content, err := os.ReadFile(rcFile)
+	if err != nil && !os.IsNotExist(err) {
+		return false, "", fmt.Errorf("failed to read %s: %w", rcFile, err)
+	}
+
+	installed := strings.Contains(string(content), "# claude-workspace shell integration")
+	return installed, rcFile, nil
+}
+
 var installShellCmd = &cobra.Command{
 	Use:   "install-shell",
 	Short: "Install shell integration (adds cw function to your shell)",
@@ -40,29 +68,13 @@ var installShellCmd = &cobra.Command{
 Adds the 'cw' function to your ~/.zshrc or ~/.bashrc:
   cw - Interactive super-prompt with workspace management and clone navigation`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return fmt.Errorf("failed to get home directory: %w", err)
-		}
-
-		// Detect shell
-		shell := os.Getenv("SHELL")
-		var rcFile string
-		if strings.Contains(shell, "zsh") {
-			rcFile = filepath.Join(home, ".zshrc")
-		} else if strings.Contains(shell, "bash") {
-			rcFile = filepath.Join(home, ".bashrc")
-		} else {
-			return fmt.Errorf("unsupported shell: %s (only bash and zsh supported)", shell)
-		}
-
 		// Check if already installed
-		content, err := os.ReadFile(rcFile)
-		if err != nil && !os.IsNotExist(err) {
-			return fmt.Errorf("failed to read %s: %w", rcFile, err)
+		installed, rcFile, err := isShellIntegrationInstalled()
+		if err != nil {
+			return err
 		}
 
-		if strings.Contains(string(content), "# claude-workspace shell integration") {
+		if installed {
 			fmt.Println("✓ Shell integration already installed")
 			fmt.Printf("  Location: %s\n", rcFile)
 			fmt.Println("\nAvailable commands:")
@@ -71,6 +83,9 @@ Adds the 'cw' function to your ~/.zshrc or ~/.bashrc:
 			fmt.Println("  cw create       - Create a workspace")
 			return nil
 		}
+
+		home, _ := os.UserHomeDir()
+		shell := os.Getenv("SHELL")
 
 		// Generate and install completion
 		var completionScript string
