@@ -14,6 +14,27 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// shortenPath returns a shortened version of the path for display
+// Shows last 2-3 components or uses ~ for home directory
+func shortenPath(path string) string {
+	// Try to replace home directory with ~
+	home, err := os.UserHomeDir()
+	if err == nil && strings.HasPrefix(path, home) {
+		path = "~" + strings.TrimPrefix(path, home)
+	}
+
+	// Split path into components
+	parts := strings.Split(path, "/")
+
+	// If path is short enough, return as-is
+	if len(parts) <= 3 {
+		return path
+	}
+
+	// Return last 3 components
+	return strings.Join(parts[len(parts)-3:], "/")
+}
+
 var startCmd = &cobra.Command{
 	Use:   "start [name]",
 	Short: "Start a workspace session (interactive)",
@@ -110,12 +131,16 @@ Direct mode:
 			// Customize tmux status line for this workspace
 			var statusLeft string
 			repoPath := ws.GetRepoPath()
+
+			// Shorten path for display (show last 2-3 components or use ~)
+			displayPath := shortenPath(repoPath)
+
 			gitBranch := fmt.Sprintf("#(cd %s && git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'no-branch')", repoPath)
 
 			if summary != "" {
-				statusLeft = fmt.Sprintf("[%s] %s @ %s | %s", name, repoPath, gitBranch, summary)
+				statusLeft = fmt.Sprintf("[%s] %s @ %s | %s", name, displayPath, gitBranch, summary)
 			} else {
-				statusLeft = fmt.Sprintf("[%s] %s @ %s", name, repoPath, gitBranch)
+				statusLeft = fmt.Sprintf("[%s] %s @ %s", name, displayPath, gitBranch)
 			}
 
 			// Add tmux shortcuts to status-right
