@@ -97,20 +97,31 @@ Direct mode:
 				return err
 			}
 
-			// Customize tmux status line for this workspace
-			var statusLeft string
-			if ws.ClonePath != "" {
-				if clone, err := cfg.GetClone(ws.ClonePath); err == nil {
-					statusLeft = fmt.Sprintf("[%s] %s @ #(cd %s && git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'no-branch')",
-						name, clone.RemoteName, ws.ClonePath)
-				} else {
-					statusLeft = fmt.Sprintf("[%s] %s", name, ws.ClonePath)
-				}
-			} else {
-				statusLeft = fmt.Sprintf("[%s] %s", name, ws.GetRepoPath())
+			// Read workspace summary
+			summary := wsMgr.GetSummary(name)
+			if summary == "(no summary)" {
+				summary = ""
+			}
+			// Truncate summary if too long
+			if len(summary) > 30 {
+				summary = summary[:27] + "..."
 			}
 
-			if err := sessionMgr.SetStatusLine(sessionName, statusLeft); err != nil {
+			// Customize tmux status line for this workspace
+			var statusLeft string
+			repoPath := ws.GetRepoPath()
+			gitBranch := fmt.Sprintf("#(cd %s && git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'no-branch')", repoPath)
+
+			if summary != "" {
+				statusLeft = fmt.Sprintf("[%s] %s @ %s | %s", name, repoPath, gitBranch, summary)
+			} else {
+				statusLeft = fmt.Sprintf("[%s] %s @ %s", name, repoPath, gitBranch)
+			}
+
+			// Add tmux shortcuts to status-right
+			statusRight := "^b d:detach ^b s:switch ^b [:scroll"
+
+			if err := sessionMgr.SetStatusLine(sessionName, statusLeft, statusRight); err != nil {
 				fmt.Printf("Warning: failed to set status line: %v\n", err)
 			}
 

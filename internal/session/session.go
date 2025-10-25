@@ -139,11 +139,13 @@ func (m *Manager) GetSessionState(sessionName string) (string, error) {
 }
 
 // SetStatusLine customizes the tmux status line for a session
-func (m *Manager) SetStatusLine(sessionName, statusLeft string) error {
+func (m *Manager) SetStatusLine(sessionName, statusLeft, statusRight string) error {
 	// Set status line options for this session
 	commands := [][]string{
-		{"tmux", "set-option", "-t", sessionName, "status-left-length", "100"},
+		{"tmux", "set-option", "-t", sessionName, "status-left-length", "80"},
 		{"tmux", "set-option", "-t", sessionName, "status-left", statusLeft},
+		{"tmux", "set-option", "-t", sessionName, "status-right-length", "60"},
+		{"tmux", "set-option", "-t", sessionName, "status-right", statusRight},
 		{"tmux", "set-option", "-t", sessionName, "status-style", "bg=colour235,fg=colour136"},
 		{"tmux", "set-option", "-t", sessionName, "status-interval", "5"}, // Update every 5 seconds for git branch
 	}
