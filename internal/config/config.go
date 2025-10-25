@@ -139,6 +139,9 @@ func NewDefaultConfig() *Config {
 
 // AddWorkspace adds a new workspace to the config
 func (c *Config) AddWorkspace(name, repoPath string) error {
+	if name == "" {
+		return fmt.Errorf("workspace name cannot be empty")
+	}
 	if _, exists := c.Workspaces[name]; exists {
 		return fmt.Errorf("workspace '%s' already exists", name)
 	}
