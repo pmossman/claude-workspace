@@ -20,8 +20,27 @@ func NewManager(baseDir string) *Manager {
 }
 
 // GetPath returns the full path to a workspace directory
+// Note: This does path traversal prevention by sanitizing the name
 func (m *Manager) GetPath(name string) string {
-	return filepath.Join(m.baseDir, name)
+	// Prevent path traversal - check name for dangerous patterns BEFORE joining
+	// This prevents attacks like "../escape" or "/etc/passwd"
+	if strings.Contains(name, "..") || strings.HasPrefix(name, "/") || strings.HasPrefix(name, "\\") {
+		// Sanitize to just the base filename component
+		name = filepath.Base(name)
+	}
+
+	// Join the paths
+	path := filepath.Join(m.baseDir, name)
+
+	// Additional safety check: verify the final path is within baseDir
+	path = filepath.Clean(path)
+	relPath, err := filepath.Rel(m.baseDir, path)
+	if err != nil || strings.HasPrefix(relPath, "..") || strings.Contains(relPath, string(filepath.Separator)+"..") {
+		// Path escapes baseDir - use just the base name
+		return filepath.Join(m.baseDir, filepath.Base(name))
+	}
+
+	return path
 }
 
 // Create creates a new workspace directory structure

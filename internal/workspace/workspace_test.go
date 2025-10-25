@@ -421,13 +421,19 @@ func TestManager_Clone_MissingFiles(t *testing.T) {
 func TestManager_GetPath_RelativeName(t *testing.T) {
 	mgr := NewManager("/tmp/workspaces")
 
-	// Test with relative-looking name
+	// Test with path traversal attempt - should be prevented
 	path := mgr.GetPath("../escape")
-	// filepath.Join normalizes the path
-	assert.Equal(t, "/tmp/escape", path)
+	// Should sanitize to just "escape" within baseDir (prevents traversal)
+	assert.Equal(t, "/tmp/workspaces/escape", path)
+	assert.Contains(t, path, "/tmp/workspaces/")
 
-	// Note: This shows path traversal is possible at GetPath level
-	// Callers should validate workspace names before using
+	// Test with multiple traversal attempts
+	path = mgr.GetPath("../../etc/passwd")
+	assert.Equal(t, "/tmp/workspaces/passwd", path)
+
+	// Test with absolute path attempt
+	path = mgr.GetPath("/etc/passwd")
+	assert.Equal(t, "/tmp/workspaces/passwd", path)
 }
 
 func TestManager_Create_PermissionError(t *testing.T) {

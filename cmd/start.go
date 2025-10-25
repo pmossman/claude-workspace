@@ -35,6 +35,14 @@ func shortenPath(path string) string {
 	return strings.Join(parts[len(parts)-3:], "/")
 }
 
+// escapeShellArg escapes a string for safe use in shell commands
+// This prevents command injection by wrapping in single quotes and escaping any single quotes
+func escapeShellArg(arg string) string {
+	// Replace ' with '\'' (end quote, escaped quote, start quote)
+	escaped := strings.ReplaceAll(arg, "'", "'\\''")
+	return fmt.Sprintf("'%s'", escaped)
+}
+
 var startCmd = &cobra.Command{
 	Use:   "start [name]",
 	Short: "Start a workspace session (interactive)",
@@ -135,7 +143,9 @@ Direct mode:
 			// Shorten path for display (show last 2-3 components or use ~)
 			displayPath := shortenPath(repoPath)
 
-			gitBranch := fmt.Sprintf("#(cd %s && git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'no-branch')", repoPath)
+			// Escape repo path for safe use in shell command (prevents command injection)
+			escapedRepoPath := escapeShellArg(repoPath)
+			gitBranch := fmt.Sprintf("#(cd %s && git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'no-branch')", escapedRepoPath)
 
 			if summary != "" {
 				statusLeft = fmt.Sprintf("[%s] %s @ %s | %s", name, displayPath, gitBranch, summary)
