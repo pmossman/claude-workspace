@@ -72,23 +72,80 @@ Adds the 'cw' function to your ~/.zshrc or ~/.bashrc:
 			return nil
 		}
 
-		// Append integration
+		// Generate and install completion
+		var completionScript string
+		var completionPath string
+		if strings.Contains(shell, "zsh") {
+			// Generate zsh completion
+			completionDir := filepath.Join(home, ".zsh", "completion")
+			if err := os.MkdirAll(completionDir, 0755); err != nil {
+				return fmt.Errorf("failed to create completion directory: %w", err)
+			}
+			completionPath = filepath.Join(completionDir, "_claude-workspace")
+
+			// Generate completion script to string
+			var builder strings.Builder
+			if err := rootCmd.GenZshCompletion(&builder); err != nil {
+				return fmt.Errorf("failed to generate zsh completion: %w", err)
+			}
+			completionScript = builder.String()
+		} else {
+			// Generate bash completion
+			completionPath = filepath.Join(home, ".claude-workspace-completion.bash")
+
+			// Generate completion script to string
+			var builder strings.Builder
+			if err := rootCmd.GenBashCompletion(&builder); err != nil {
+				return fmt.Errorf("failed to generate bash completion: %w", err)
+			}
+			completionScript = builder.String()
+		}
+
+		// Write completion script
+		if err := os.WriteFile(completionPath, []byte(completionScript), 0644); err != nil {
+			return fmt.Errorf("failed to write completion script: %w", err)
+		}
+
+		// Append integration and completion sourcing
 		f, err := os.OpenFile(rcFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 		if err != nil {
 			return fmt.Errorf("failed to open %s: %w", rcFile, err)
 		}
 		defer f.Close()
 
+		// Write shell integration
 		if _, err := f.WriteString(shellIntegration); err != nil {
 			return fmt.Errorf("failed to write to %s: %w", rcFile, err)
 		}
 
+		// Add completion sourcing
+		if strings.Contains(shell, "zsh") {
+			completionSetup := fmt.Sprintf(`
+# claude-workspace completion
+fpath=(~/.zsh/completion $fpath)
+autoload -Uz compinit && compinit
+`)
+			if _, err := f.WriteString(completionSetup); err != nil {
+				return fmt.Errorf("failed to write completion setup: %w", err)
+			}
+		} else {
+			completionSetup := fmt.Sprintf(`
+# claude-workspace completion
+source %s
+`, completionPath)
+			if _, err := f.WriteString(completionSetup); err != nil {
+				return fmt.Errorf("failed to write completion setup: %w", err)
+			}
+		}
+
 		fmt.Println("✓ Shell integration installed")
 		fmt.Printf("  Location: %s\n", rcFile)
+		fmt.Printf("  Completion: %s\n", completionPath)
 		fmt.Println("\nAvailable commands:")
 		fmt.Println("  cw              - Interactive super-prompt (workspaces, clones, actions)")
 		fmt.Println("  cw start <name> - Start a workspace")
 		fmt.Println("  cw create       - Create a workspace")
+		fmt.Println("\n✓ Tab completion enabled for all cw commands")
 		fmt.Println()
 		fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 		fmt.Println("⚠️  ACTION REQUIRED: Activate shell integration")

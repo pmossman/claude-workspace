@@ -17,6 +17,9 @@ func Execute() error {
 }
 
 func init() {
+	// Disable standalone completion command (integrated into install-shell)
+	rootCmd.CompletionOptions.DisableDefaultCmd = true
+
 	// Register subcommands
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(installShellCmd)
@@ -26,7 +29,7 @@ func init() {
 	rootCmd.AddCommand(selectCmd)
 	rootCmd.AddCommand(infoCmd)
 	rootCmd.AddCommand(archiveCmd)
-	rootCmd.AddCommand(cloneCmd)
+	rootCmd.AddCommand(forkCmd)
 
 	// Remote and clone management
 	rootCmd.AddCommand(addRemoteCmd)

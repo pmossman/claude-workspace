@@ -120,7 +120,8 @@ claude-workspace start <name>       # Start/attach to workspace
 claude-workspace list               # List all workspaces
 claude-workspace info <name>        # Show workspace details
 claude-workspace archive <name>     # Archive completed workspace
-claude-workspace clone <from> <to> <path>  # Clone workspace context
+claude-workspace fork <from> <to> <path>  # Fork workspace context to new workspace
+claude-workspace install-shell      # Install shell integration and tab completion
 ```
 
 ## How It Works
@@ -206,15 +207,15 @@ claude-workspace create feature-a ~/dev/my-repo
 claude-workspace create feature-b ~/alt/my-repo
 ```
 
-### Cloning Context
+### Forking Workspaces
 
 When branching work from an existing workspace:
 
 ```bash
-claude-workspace clone feature-a feature-a-v2 ~/dev/my-repo
+cw fork feature-a feature-a-v2 ~/dev/my-repo
 ```
 
-Copies all context files to the new workspace.
+Copies all context files from the source workspace to the new workspace.
 
 ### Archiving
 

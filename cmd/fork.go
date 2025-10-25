@@ -11,9 +11,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var cloneCmd = &cobra.Command{
-	Use:   "clone <from-name> <to-name> <repo-path>",
-	Short: "Clone a workspace to a new one",
+var forkCmd = &cobra.Command{
+	Use:   "fork <from-name> <to-name> <repo-path>",
+	Short: "Fork a workspace to create a new one with copied context",
 	Long: `Creates a new workspace by copying context from an existing workspace.
 Useful when branching work to a new feature from an existing workspace.`,
 	Args: cobra.ExactArgs(3),
@@ -77,11 +77,11 @@ Useful when branching work to a new feature from an existing workspace.`,
 			return fmt.Errorf("failed to save config: %w", err)
 		}
 
-		fmt.Printf("✓ Cloned workspace '%s' → '%s'\n", fromName, toName)
+		fmt.Printf("✓ Forked workspace '%s' → '%s'\n", fromName, toName)
 		fmt.Printf("  Repository: %s\n", absRepoPath)
 		fmt.Printf("  Workspace dir: %s\n", workspaceDir)
 		fmt.Println("\nContext files copied from source workspace.")
-		fmt.Println("Next: claude-workspace start", toName)
+		fmt.Println("Next: cw start", toName)
 
 		return nil
 	},
