@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -137,11 +138,50 @@ func NewDefaultConfig() *Config {
 	}
 }
 
-// AddWorkspace adds a new workspace to the config
-func (c *Config) AddWorkspace(name, repoPath string) error {
+// ValidateWorkspaceName checks if a workspace name is valid
+// Valid names must:
+// - Not be empty
+// - Not contain spaces
+// - Not contain path separators (/, \)
+// - Not contain special shell characters that could cause issues
+func ValidateWorkspaceName(name string) error {
 	if name == "" {
 		return fmt.Errorf("workspace name cannot be empty")
 	}
+
+	// Check for spaces
+	if strings.Contains(name, " ") {
+		return fmt.Errorf("workspace name cannot contain spaces: '%s'", name)
+	}
+
+	// Check for path separators
+	if strings.Contains(name, "/") || strings.Contains(name, "\\") {
+		return fmt.Errorf("workspace name cannot contain path separators: '%s'", name)
+	}
+
+	// Check for other problematic characters
+	invalidChars := []string{":", "*", "?", "\"", "<", ">", "|", "\t", "\n"}
+	for _, char := range invalidChars {
+		if strings.Contains(name, char) {
+			return fmt.Errorf("workspace name contains invalid character '%s': '%s'", char, name)
+		}
+	}
+
+	// Check for path traversal patterns
+	if strings.Contains(name, "..") {
+		return fmt.Errorf("workspace name cannot contain '..': '%s'", name)
+	}
+
+	return nil
+}
+
+// AddWorkspace adds a new workspace to the config
+func (c *Config) AddWorkspace(name, repoPath string) error {
+	// Validate workspace name
+	if err := ValidateWorkspaceName(name); err != nil {
+		return err
+	}
+
 	if _, exists := c.Workspaces[name]; exists {
 		return fmt.Errorf("workspace '%s' already exists", name)
 	}

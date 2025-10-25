@@ -179,6 +179,162 @@ func TestConfig_AddWorkspace_EmptyName(t *testing.T) {
 	assert.Contains(t, err.Error(), "cannot be empty")
 }
 
+func TestValidateWorkspaceName(t *testing.T) {
+	tests := []struct {
+		name      string
+		wsName    string
+		wantError bool
+		errMsg    string
+	}{
+		{
+			name:      "valid simple name",
+			wsName:    "myworkspace",
+			wantError: false,
+		},
+		{
+			name:      "valid name with dash",
+			wsName:    "my-workspace",
+			wantError: false,
+		},
+		{
+			name:      "valid name with underscore",
+			wsName:    "my_workspace",
+			wantError: false,
+		},
+		{
+			name:      "valid name with number",
+			wsName:    "workspace123",
+			wantError: false,
+		},
+		{
+			name:      "empty name",
+			wsName:    "",
+			wantError: true,
+			errMsg:    "cannot be empty",
+		},
+		{
+			name:      "name with space",
+			wsName:    "my workspace",
+			wantError: true,
+			errMsg:    "cannot contain spaces",
+		},
+		{
+			name:      "name with multiple spaces",
+			wsName:    "my   workspace",
+			wantError: true,
+			errMsg:    "cannot contain spaces",
+		},
+		{
+			name:      "name with forward slash",
+			wsName:    "my/workspace",
+			wantError: true,
+			errMsg:    "cannot contain path separators",
+		},
+		{
+			name:      "name with backslash",
+			wsName:    "my\\workspace",
+			wantError: true,
+			errMsg:    "cannot contain path separators",
+		},
+		{
+			name:      "name with colon",
+			wsName:    "my:workspace",
+			wantError: true,
+			errMsg:    "invalid character",
+		},
+		{
+			name:      "name with asterisk",
+			wsName:    "my*workspace",
+			wantError: true,
+			errMsg:    "invalid character",
+		},
+		{
+			name:      "name with question mark",
+			wsName:    "my?workspace",
+			wantError: true,
+			errMsg:    "invalid character",
+		},
+		{
+			name:      "name with quotes",
+			wsName:    "my\"workspace",
+			wantError: true,
+			errMsg:    "invalid character",
+		},
+		{
+			name:      "name with less than",
+			wsName:    "my<workspace",
+			wantError: true,
+			errMsg:    "invalid character",
+		},
+		{
+			name:      "name with greater than",
+			wsName:    "my>workspace",
+			wantError: true,
+			errMsg:    "invalid character",
+		},
+		{
+			name:      "name with pipe",
+			wsName:    "my|workspace",
+			wantError: true,
+			errMsg:    "invalid character",
+		},
+		{
+			name:      "name with tab",
+			wsName:    "my\tworkspace",
+			wantError: true,
+			errMsg:    "invalid character",
+		},
+		{
+			name:      "name with newline",
+			wsName:    "my\nworkspace",
+			wantError: true,
+			errMsg:    "invalid character",
+		},
+		{
+			name:      "name with path traversal",
+			wsName:    "../escape",
+			wantError: true,
+			errMsg:    "cannot contain path separators", // Caught by slash check first
+		},
+		{
+			name:      "name with double dot in middle",
+			wsName:    "my..workspace",
+			wantError: true,
+			errMsg:    "cannot contain '..'",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateWorkspaceName(tt.wsName)
+			if tt.wantError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errMsg)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestConfig_AddWorkspace_InvalidNames(t *testing.T) {
+	cfg := createTestConfig(t, setupTestDir(t))
+
+	// Test that AddWorkspace rejects invalid names
+	invalidNames := []string{
+		"my workspace",
+		"my/workspace",
+		"my\\workspace",
+		"my:workspace",
+		"../escape",
+	}
+
+	for _, name := range invalidNames {
+		err := cfg.AddWorkspace(name, "/tmp/test-repo")
+		assert.Error(t, err, "should reject workspace name: %s", name)
+	}
+}
+
 func TestConfig_GetWorkspace(t *testing.T) {
 	cfg := createTestConfig(t, setupTestDir(t))
 
