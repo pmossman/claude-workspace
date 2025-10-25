@@ -121,7 +121,6 @@ claude-workspace list               # List all workspaces
 claude-workspace info <name>        # Show workspace details
 claude-workspace archive <name>     # Archive completed workspace
 claude-workspace clone <from> <to> <path>  # Clone workspace context
-claude-workspace quick              # Quick session (no workspace)
 ```
 
 ## How It Works
@@ -216,14 +215,6 @@ claude-workspace clone feature-a feature-a-v2 ~/dev/my-repo
 ```
 
 Copies all context files to the new workspace.
-
-### Quick Sessions
-
-For one-off questions without long-term context:
-
-```bash
-claude-workspace quick
-```
 
 ### Archiving
 

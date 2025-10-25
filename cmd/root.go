@@ -27,12 +27,10 @@ func init() {
 	rootCmd.AddCommand(infoCmd)
 	rootCmd.AddCommand(archiveCmd)
 	rootCmd.AddCommand(cloneCmd)
-	rootCmd.AddCommand(quickCmd)
 
 	// Remote and clone management
 	rootCmd.AddCommand(addRemoteCmd)
 	rootCmd.AddCommand(listRemotesCmd)
 	rootCmd.AddCommand(newCloneCmd)
-	rootCmd.AddCommand(importCloneCmd)
 	rootCmd.AddCommand(clonesCmd)
 }
