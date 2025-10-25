@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
@@ -126,10 +127,12 @@ func (m *Manager) GetSessionState(sessionName string) (string, error) {
 		return "", fmt.Errorf("failed to get session state: %w", err)
 	}
 
-	// Parse output: "session-name:1" or "session-name:0"
+	// Parse output: "session-name:N" where N is the number of attached clients
+	// N = 0 means detached, N > 0 means attached (can be multiple clients)
 	parts := strings.Split(strings.TrimSpace(string(output)), ":")
 	if len(parts) >= 2 {
-		if parts[1] == "1" {
+		attachedCount, err := strconv.Atoi(parts[1])
+		if err == nil && attachedCount > 0 {
 			return "attached", nil
 		}
 		return "detached", nil
