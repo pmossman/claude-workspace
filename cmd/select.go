@@ -104,6 +104,9 @@ func buildActionMenuItems(cfg *config.Config) []string {
 	if len(cfg.Workspaces) > 0 {
 		lines = append(lines, colorBlue+"→"+colorReset+" CD to workspace clone")
 		lines = append(lines, colorBlue+"→"+colorReset+" Open workspace folder")
+		lines = append(lines, colorBlue+"→"+colorReset+" Save context")
+		lines = append(lines, colorBlue+"→"+colorReset+" Restart Claude session")
+		lines = append(lines, colorBlue+"→"+colorReset+" Stop workspace")
 		lines = append(lines, colorBlue+"→"+colorReset+" Archive workspace")
 	}
 
@@ -262,6 +265,15 @@ func handleAction(cfg *config.Config, action string) error {
 
 	case strings.HasPrefix(action, "→ Open workspace folder"):
 		return openCmd.RunE(nil, []string{})
+
+	case strings.HasPrefix(action, "→ Save context"):
+		return saveContextCmd.RunE(nil, []string{})
+
+	case strings.HasPrefix(action, "→ Restart Claude session"):
+		return restartCmd.RunE(nil, []string{})
+
+	case strings.HasPrefix(action, "→ Stop workspace"):
+		return stopCmd.RunE(nil, []string{})
 
 	case strings.HasPrefix(action, "→ Archive workspace"):
 		return interactiveArchive(cfg)
@@ -581,6 +593,58 @@ var previewMenuCmd = &cobra.Command{
 			fmt.Println("    - continuation.md")
 			fmt.Println("    - summary.txt")
 			fmt.Println("    - research/ folder")
+			return nil
+		}
+
+		if strings.HasPrefix(selection, "→ Save context") {
+			fmt.Println("Save context and continuation for a workspace.")
+			fmt.Println()
+			fmt.Printf("Total workspaces: %d\n", len(cfg.Workspaces))
+			fmt.Println()
+			fmt.Println("Useful for:")
+			fmt.Println("  • Preserving progress before restarting Claude")
+			fmt.Println("  • Manual checkpoints during long tasks")
+			fmt.Println("  • Ensuring continuation.md is up to date")
+			fmt.Println()
+			fmt.Println("This will:")
+			fmt.Println("  • Show current continuation (if any)")
+			fmt.Println("  • Prompt for updated continuation text")
+			fmt.Println("  • Save to continuation.md for next session")
+			return nil
+		}
+
+		if strings.HasPrefix(selection, "→ Restart Claude session") {
+			fmt.Println("Restart the Claude Code session in a workspace.")
+			fmt.Println()
+			fmt.Printf("Total workspaces: %d\n", len(cfg.Workspaces))
+			fmt.Println()
+			fmt.Println("Useful when:")
+			fmt.Println("  • Claude becomes unresponsive or stuck")
+			fmt.Println("  • You want to start fresh with a new session")
+			fmt.Println("  • You need to reload with the continuation prompt")
+			fmt.Println()
+			fmt.Println("This will:")
+			fmt.Println("  • Prompt to save continuation first")
+			fmt.Println("  • Kill the current Claude process (Ctrl-C)")
+			fmt.Println("  • Start a new Claude session")
+			fmt.Println("  • Display and copy the continuation prompt")
+			fmt.Println("  • Keep tmux session and context intact")
+			return nil
+		}
+
+		if strings.HasPrefix(selection, "→ Stop workspace") {
+			fmt.Println("Stop a workspace temporarily and free its clone.")
+			fmt.Println()
+			fmt.Printf("Total workspaces: %d\n", len(cfg.Workspaces))
+			fmt.Println()
+			fmt.Println("This will:")
+			fmt.Println("  • Select a workspace to stop")
+			fmt.Println("  • Kill the tmux session (if running)")
+			fmt.Println("  • Free the clone for other workspaces to use")
+			fmt.Println("  • Set status to 'idle'")
+			fmt.Println()
+			fmt.Println("The workspace can be restarted with 'cw start'")
+			fmt.Println("All context files are preserved")
 			return nil
 		}
 

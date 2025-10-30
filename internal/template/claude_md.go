@@ -69,6 +69,25 @@ You are in a managed workspace. **You MUST maintain context files** to preserve 
 - Discovering architectural patterns → Write to research/
 - As you gain context → Update summary.txt
 
+### Context Management & Restarts
+
+**Monitor your context usage throughout the session:**
+- If your context window reaches 70-80% full, proactively suggest a restart to the user
+- Before accepting a restart, ALWAYS update continuation.md with current progress
+- Format: "Context is at X%. Consider restarting with: cw restart {{.WorkspaceName}}"
+- A restart preserves all workspace state while giving you a fresh context window
+
+**Why restart matters:**
+- Prevents context compaction from dropping important instructions
+- Ensures CLAUDE.md instructions remain fully in context
+- Allows you to reload with a focused continuation prompt
+- Maintains workspace continuity without losing progress
+
+**When to suggest restart:**
+- Context >70%: Mention it's getting full, offer to continue or restart
+- Context >85%: Strongly recommend restart before continuing
+- Before long tasks: If context is >50% and starting something complex
+
 ### These files are FOR YOU, not the user
 Don't ask permission to maintain them. Do it proactively.
 The user won't read these - they're your memory system.

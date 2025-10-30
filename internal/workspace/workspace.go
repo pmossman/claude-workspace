@@ -97,6 +97,30 @@ func (m *Manager) GetContinuation(name string) string {
 	return string(data)
 }
 
+// SaveContinuation writes content to the continuation.md file for a workspace
+func (m *Manager) SaveContinuation(name, content string) error {
+	contPath := filepath.Join(m.GetPath(name), "continuation.md")
+	return os.WriteFile(contPath, []byte(content), 0644)
+}
+
+// SaveContext writes content to the context.md file for a workspace
+func (m *Manager) SaveContext(name, content string) error {
+	contextPath := filepath.Join(m.GetPath(name), "context.md")
+	return os.WriteFile(contextPath, []byte(content), 0644)
+}
+
+// SaveDecisions writes content to the decisions.md file for a workspace
+func (m *Manager) SaveDecisions(name, content string) error {
+	decisionsPath := filepath.Join(m.GetPath(name), "decisions.md")
+	return os.WriteFile(decisionsPath, []byte(content), 0644)
+}
+
+// SaveSummary writes content to the summary.txt file for a workspace
+func (m *Manager) SaveSummary(name, content string) error {
+	summaryPath := filepath.Join(m.GetPath(name), "summary.txt")
+	return os.WriteFile(summaryPath, []byte(content), 0644)
+}
+
 // GetContext reads the context.md file for a workspace
 func (m *Manager) GetContext(name string) string {
 	contextPath := filepath.Join(m.GetPath(name), "context.md")

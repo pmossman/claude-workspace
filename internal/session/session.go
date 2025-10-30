@@ -73,6 +73,12 @@ func (m *Manager) SendKeys(sessionName, keys string) error {
 	return cmd.Run()
 }
 
+// SendKeysLiteral sends keys to a tmux session without automatically pressing Enter
+func (m *Manager) SendKeysLiteral(sessionName, keys string) error {
+	cmd := exec.Command("tmux", "send-keys", "-t", sessionName, keys)
+	return cmd.Run()
+}
+
 // Kill kills a tmux session
 func (m *Manager) Kill(sessionName string) error {
 	cmd := exec.Command("tmux", "kill-session", "-t", sessionName)
