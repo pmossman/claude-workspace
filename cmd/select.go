@@ -25,7 +25,7 @@ const (
 )
 
 // buildWorkspaceMenuItems creates the workspace list section of the menu
-func buildWorkspaceMenuItems(cfg *config.Config, wsMgr *workspace.Manager, sessionMgr *session.Manager) []string {
+func buildWorkspaceMenuItems(cfg *config.Config, wsMgr *workspace.Manager, sessionMgr *session.Manager, includeArchived bool) []string {
 	var lines []string
 
 	if len(cfg.Workspaces) == 0 {
@@ -42,6 +42,10 @@ func buildWorkspaceMenuItems(cfg *config.Config, wsMgr *workspace.Manager, sessi
 	}
 	var entries []wsEntry
 	for name, ws := range cfg.Workspaces {
+		// Skip archived workspaces unless explicitly requested
+		if !includeArchived && ws.Status == config.StatusArchived {
+			continue
+		}
 		entries = append(entries, wsEntry{name: name, ws: ws})
 	}
 	sort.Slice(entries, func(i, j int) bool {
@@ -96,8 +100,10 @@ func buildActionMenuItems(cfg *config.Config) []string {
 	// Add create workspace action
 	lines = append(lines, colorBlue+"→"+colorReset+" Create new workspace")
 
-	// Add archive action if there are workspaces
+	// Add workspace management actions if there are workspaces
 	if len(cfg.Workspaces) > 0 {
+		lines = append(lines, colorBlue+"→"+colorReset+" CD to workspace clone")
+		lines = append(lines, colorBlue+"→"+colorReset+" Open workspace folder")
 		lines = append(lines, colorBlue+"→"+colorReset+" Archive workspace")
 	}
 
@@ -169,6 +175,10 @@ func parseWorkspaceSelection(selected string) (string, error) {
 	return strings.TrimSpace(selected[:bracketIdx]), nil
 }
 
+var (
+	selectArchived bool
+)
+
 var selectCmd = &cobra.Command{
 	Use:   "select",
 	Short: "Interactive super-prompt for all workspace operations",
@@ -192,7 +202,7 @@ var selectCmd = &cobra.Command{
 		var inputLines []string
 
 		// Add workspace items
-		workspaceLines := buildWorkspaceMenuItems(cfg, wsMgr, sessionMgr)
+		workspaceLines := buildWorkspaceMenuItems(cfg, wsMgr, sessionMgr, selectArchived)
 		inputLines = append(inputLines, workspaceLines...)
 
 		// Add separator if there are workspaces
@@ -247,6 +257,12 @@ func handleAction(cfg *config.Config, action string) error {
 	case strings.HasPrefix(action, "→ Create new workspace"):
 		return createCmd.RunE(nil, []string{})
 
+	case strings.HasPrefix(action, "→ CD to workspace clone"):
+		return cdCmd.RunE(nil, []string{})
+
+	case strings.HasPrefix(action, "→ Open workspace folder"):
+		return openCmd.RunE(nil, []string{})
+
 	case strings.HasPrefix(action, "→ Archive workspace"):
 		return interactiveArchive(cfg)
 
@@ -264,11 +280,11 @@ func handleAction(cfg *config.Config, action string) error {
 	}
 }
 
-// interactiveArchive shows an interactive workspace archive selector
-func interactiveArchive(cfg *config.Config) error {
+// selectWorkspaceInteractive shows an interactive workspace selector and returns the selected workspace name
+func selectWorkspaceInteractive(cfg *config.Config) (string, error) {
 	if len(cfg.Workspaces) == 0 {
-		fmt.Println("No workspaces to archive.")
-		return nil
+		fmt.Println("No workspaces found.")
+		return "", nil
 	}
 
 	wsMgr := workspace.NewManager(cfg.Settings.WorkspaceDir)
@@ -280,6 +296,10 @@ func interactiveArchive(cfg *config.Config) error {
 	}
 	var entries []wsEntry
 	for name, ws := range cfg.Workspaces {
+		// Skip archived workspaces in interactive selection
+		if ws.Status == config.StatusArchived {
+			continue
+		}
 		entries = append(entries, wsEntry{name: name, ws: ws})
 	}
 	sort.Slice(entries, func(i, j int) bool {
@@ -306,8 +326,8 @@ func interactiveArchive(cfg *config.Config) error {
 	fzfCmd := exec.Command("fzf",
 		"--ansi",
 		"--height=50%",
-		"--header=Select workspace to archive (Ctrl-C to cancel)",
-		"--prompt=Archive> ",
+		"--header=Select workspace (Ctrl-C to cancel)",
+		"--prompt=Workspace> ",
 	)
 
 	fzfCmd.Stdin = strings.NewReader(input)
@@ -319,23 +339,36 @@ func interactiveArchive(cfg *config.Config) error {
 	if err := fzfCmd.Run(); err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			if exitErr.ExitCode() == 130 {
-				return nil
+				return "", nil
 			}
 		}
-		return fmt.Errorf("fzf failed: %w", err)
+		return "", fmt.Errorf("fzf failed: %w", err)
 	}
 
 	selected := strings.TrimSpace(outBuf.String())
 	if selected == "" {
-		return nil
+		return "", nil
 	}
 
 	// Parse workspace name (everything before '[')
 	bracketIdx := strings.Index(selected, "[")
 	if bracketIdx == -1 {
-		return fmt.Errorf("invalid selection format")
+		return "", fmt.Errorf("invalid selection format")
 	}
 	workspaceName := strings.TrimSpace(selected[:bracketIdx])
+
+	return workspaceName, nil
+}
+
+// interactiveArchive shows an interactive workspace archive selector
+func interactiveArchive(cfg *config.Config) error {
+	workspaceName, err := selectWorkspaceInteractive(cfg)
+	if err != nil {
+		return err
+	}
+	if workspaceName == "" {
+		return nil // User cancelled
+	}
 
 	// Call archive command
 	return archiveCmd.RunE(nil, []string{workspaceName})
@@ -520,6 +553,37 @@ var previewMenuCmd = &cobra.Command{
 			return nil
 		}
 
+		if strings.HasPrefix(selection, "→ CD to workspace clone") {
+			fmt.Println("Change directory to a workspace's clone.")
+			fmt.Println()
+			fmt.Printf("Total workspaces: %d\n", len(cfg.Workspaces))
+			fmt.Println()
+			fmt.Println("This will:")
+			fmt.Println("  • Select a workspace")
+			fmt.Println("  • CD your shell to the workspace's clone directory")
+			fmt.Println("  • Let you work directly in the repository")
+			fmt.Println()
+			fmt.Println("Note: Requires shell integration (cw install-shell)")
+			return nil
+		}
+
+		if strings.HasPrefix(selection, "→ Open workspace folder") {
+			fmt.Println("Open a workspace directory in your file browser.")
+			fmt.Println()
+			fmt.Printf("Total workspaces: %d\n", len(cfg.Workspaces))
+			fmt.Println()
+			fmt.Println("This will:")
+			fmt.Println("  • Select a workspace")
+			fmt.Println("  • Open its folder in Finder/Explorer")
+			fmt.Println("  • Let you view/edit markdown files directly:")
+			fmt.Println("    - context.md")
+			fmt.Println("    - decisions.md")
+			fmt.Println("    - continuation.md")
+			fmt.Println("    - summary.txt")
+			fmt.Println("    - research/ folder")
+			return nil
+		}
+
 		if strings.HasPrefix(selection, "→ Archive workspace") {
 			fmt.Println("Archive an existing workspace.")
 			fmt.Println()
@@ -670,6 +734,7 @@ var previewCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(previewCmd)
 	rootCmd.AddCommand(previewMenuCmd)
+	selectCmd.Flags().BoolVar(&selectArchived, "archived", false, "Include archived workspaces in the list")
 }
 
 func checkFzfInstalled() error {

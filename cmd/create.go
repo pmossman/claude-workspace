@@ -153,58 +153,106 @@ func findOrCreateClone(cfg *config.Config, workspaceName, remoteName string) (st
 		return "", err
 	}
 
+	// Reopen /dev/tty for both reading and writing to ensure output is displayed immediately
+	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+	if err != nil {
+		return "", fmt.Errorf("failed to open terminal: %w", err)
+	}
+	defer tty.Close()
+
 	// Try to find a free clone
 	freeClone := cfg.FindFreeClone(remoteName)
-	if freeClone != nil {
-		fmt.Printf("Found free clone: %s\n", freeClone.Path)
-		return freeClone.Path, nil
-	}
 
-	// No free clones, check for idle clones
+	// Check for idle clones
 	idleClones := cfg.FindIdleClones(remoteName)
 
-	fmt.Println()
-	fmt.Printf("No free clones available for '%s'\n", remoteName)
-	fmt.Println()
-	fmt.Println("Options:")
-	fmt.Println("  1. Create a new clone")
+	// Build options list
+	fmt.Fprintln(tty)
+	if freeClone != nil {
+		fmt.Fprintf(tty, "Found free clone: %s\n", freeClone.Path)
+		fmt.Fprintln(tty)
+		fmt.Fprintln(tty, "Options:")
+		fmt.Fprintf(tty, "  1. Use free clone: %s\n", freeClone.Path)
+		fmt.Fprintln(tty, "  2. Create a new clone")
 
-	for i, clone := range idleClones {
-		ws, _ := cfg.GetWorkspace(clone.InUseBy)
-		fmt.Printf("  %d. Take over clone from '%s' (idle, branch: %s)\n", i+2, ws.Name, clone.CurrentBranch)
+		optionOffset := 3
+		for i, clone := range idleClones {
+			ws, _ := cfg.GetWorkspace(clone.InUseBy)
+			fmt.Fprintf(tty, "  %d. Take over clone from '%s' (idle, branch: %s)\n", i+optionOffset, ws.Name, clone.CurrentBranch)
+		}
+	} else {
+		fmt.Fprintf(tty, "No free clones available for '%s'\n", remoteName)
+		fmt.Fprintln(tty)
+		fmt.Fprintln(tty, "Options:")
+		fmt.Fprintln(tty, "  1. Create a new clone")
+
+		optionOffset := 2
+		for i, clone := range idleClones {
+			ws, _ := cfg.GetWorkspace(clone.InUseBy)
+			fmt.Fprintf(tty, "  %d. Take over clone from '%s' (idle, branch: %s)\n", i+optionOffset, ws.Name, clone.CurrentBranch)
+		}
 	}
 
-	fmt.Println("  0. Cancel")
-	fmt.Println()
-	fmt.Print("Choice: ")
+	fmt.Fprintln(tty, "  0. Cancel")
+	fmt.Fprintln(tty)
+	fmt.Fprint(tty, "Choice: ")
 
-	reader := bufio.NewReader(os.Stdin)
+	reader := bufio.NewReader(tty)
 	input, _ := reader.ReadString('\n')
 	input = strings.TrimSpace(input)
 
-	switch input {
-	case "0":
-		return "", fmt.Errorf("cancelled")
-	case "1":
-		// Create new clone
-		return createNewClone(cfg, remoteName)
-	default:
-		// Try to parse as takeover option
-		var choice int
-		if _, err := fmt.Sscanf(input, "%d", &choice); err == nil && choice > 1 && choice <= len(idleClones)+1 {
-			idx := choice - 2
-			clone := idleClones[idx]
-
-			// Free the clone from its current workspace
-			oldWorkspace := clone.InUseBy
-			if err := cfg.FreeClone(clone.Path); err != nil {
-				return "", err
-			}
-
-			fmt.Printf("Took over clone from workspace '%s'\n", oldWorkspace)
-			return clone.Path, nil
-		}
+	// Parse choice
+	var choice int
+	if _, err := fmt.Sscanf(input, "%d", &choice); err != nil || choice < 0 {
 		return "", fmt.Errorf("invalid choice")
+	}
+
+	if choice == 0 {
+		return "", fmt.Errorf("cancelled")
+	}
+
+	// Handle choices based on whether we have a free clone
+	if freeClone != nil {
+		switch choice {
+		case 1:
+			// Use free clone
+			return freeClone.Path, nil
+		case 2:
+			// Create new clone
+			return createNewClone(cfg, remoteName)
+		default:
+			// Take over idle clone
+			idx := choice - 3
+			if idx >= 0 && idx < len(idleClones) {
+				clone := idleClones[idx]
+				oldWorkspace := clone.InUseBy
+				if err := cfg.FreeClone(clone.Path); err != nil {
+					return "", err
+				}
+				fmt.Fprintf(tty, "Took over clone from workspace '%s'\n", oldWorkspace)
+				return clone.Path, nil
+			}
+			return "", fmt.Errorf("invalid choice")
+		}
+	} else {
+		switch choice {
+		case 1:
+			// Create new clone
+			return createNewClone(cfg, remoteName)
+		default:
+			// Take over idle clone
+			idx := choice - 2
+			if idx >= 0 && idx < len(idleClones) {
+				clone := idleClones[idx]
+				oldWorkspace := clone.InUseBy
+				if err := cfg.FreeClone(clone.Path); err != nil {
+					return "", err
+				}
+				fmt.Fprintf(tty, "Took over clone from workspace '%s'\n", oldWorkspace)
+				return clone.Path, nil
+			}
+			return "", fmt.Errorf("invalid choice")
+		}
 	}
 }
 
@@ -215,14 +263,23 @@ func createNewClone(cfg *config.Config, remoteName string) (string, error) {
 		return "", err
 	}
 
+	// Reopen /dev/tty for writing
+	tty, err := os.OpenFile("/dev/tty", os.O_WRONLY, 0)
+	if err != nil {
+		// Fallback to stdout if tty not available
+		tty = os.Stdout
+	} else {
+		defer tty.Close()
+	}
+
 	// Get next clone number
 	cloneNum := cfg.GetNextCloneNumber(remoteName)
 	clonePath := filepath.Join(remote.CloneBaseDir, fmt.Sprintf("%d", cloneNum))
 
-	fmt.Printf("\nCreating clone %d...\n", cloneNum)
-	fmt.Printf("  Cloning from: %s\n", remote.URL)
-	fmt.Printf("  To: %s\n", clonePath)
-	fmt.Println()
+	fmt.Fprintf(tty, "\nCreating clone %d...\n", cloneNum)
+	fmt.Fprintf(tty, "  Cloning from: %s\n", remote.URL)
+	fmt.Fprintf(tty, "  To: %s\n", clonePath)
+	fmt.Fprintln(tty)
 
 	// Clone the repository
 	if err := git.Clone(remote.URL, clonePath); err != nil {
@@ -243,7 +300,7 @@ func createNewClone(cfg *config.Config, remoteName string) (string, error) {
 	clone, _ := cfg.GetClone(clonePath)
 	clone.CurrentBranch = branch
 
-	fmt.Printf("✓ Created clone at %s\n\n", clonePath)
+	fmt.Fprintf(tty, "✓ Created clone at %s\n\n", clonePath)
 	return clonePath, nil
 }
 

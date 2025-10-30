@@ -69,3 +69,7 @@ var archiveCmd = &cobra.Command{
 		return nil
 	},
 }
+
+func init() {
+	archiveCmd.ValidArgsFunction = validWorkspaceNamesExcludeArchived
+}

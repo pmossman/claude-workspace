@@ -368,3 +368,7 @@ func interactiveWorkspaceSelect(cfg *config.Config) (string, error) {
 
 	return workspaceName, nil
 }
+
+func init() {
+	startCmd.ValidArgsFunction = validWorkspaceNamesExcludeArchived
+}

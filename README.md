@@ -368,15 +368,113 @@ claude-workspace archive feature-auth
 
 Moves workspace to `~/.claude-workspaces/archived/` and removes `.claude/CLAUDE.md` from repo.
 
-## tmux Primer
+## tmux Configuration for Beginners
 
-You don't need to know tmux to use this tool, but here are useful commands:
+This tool uses tmux to manage persistent sessions. While `claude-workspace` handles most tmux complexity for you, configuring tmux will greatly improve your experience.
 
-- `Ctrl-b d` - Detach from session (keeps it running)
-- `Ctrl-b [` - Scroll mode (use arrows, q to exit)
-- `tmux ls` - List all sessions
+### Recommended tmux Configuration
 
-The tool handles session creation, switching, and attachment automatically.
+Create or edit `~/.tmux.conf` with these settings:
+
+```bash
+# Enable mouse mode - allows scrolling with mouse wheel and clicking to select panes
+set -g mouse on
+
+# Increase scrollback buffer size (default is 2000 lines)
+set -g history-limit 10000
+
+# Use vi mode for copy mode (optional, but helpful if you like vi keys)
+setw -g mode-keys vi
+
+# Don't automatically rename windows based on running command
+set-option -g allow-rename off
+
+# Start window numbering at 1 instead of 0 (easier to reach on keyboard)
+set -g base-index 1
+setw -g pane-base-index 1
+
+# Reduce escape time (helps with vim/neovim responsiveness)
+set -sg escape-time 10
+
+# Enable 256 color support
+set -g default-terminal "screen-256color"
+
+# Easier pane splitting with | and -
+bind | split-window -h
+bind - split-window -v
+unbind '"'
+unbind %
+
+# Easy config reload
+bind r source-file ~/.tmux.conf \; display-message "Config reloaded!"
+```
+
+After creating this file, reload it in any active tmux session:
+```bash
+# Inside a tmux session, press Ctrl-b then type:
+:source-file ~/.tmux.conf
+
+# Or use the shortcut (if you added the config above):
+# Press Ctrl-b then r
+```
+
+### Essential tmux Commands
+
+**Session Management:**
+- `Ctrl-b d` - Detach from session (keeps it running in background)
+- `tmux ls` - List all sessions (from outside tmux)
+- `tmux attach -t <session-name>` - Reattach to a session
+
+**Scrolling & Copy Mode:**
+- **Mouse wheel** - Scroll up/down (if mouse mode enabled)
+- `Ctrl-b [` - Enter copy mode manually (use arrows to scroll, `q` to exit)
+- `Ctrl-b PgUp` - Enter copy mode and scroll up one page
+
+**Pane Management (if you split your screen):**
+- `Ctrl-b |` - Split vertically (with recommended config)
+- `Ctrl-b -` - Split horizontally (with recommended config)
+- `Ctrl-b arrow` - Move between panes
+- `Ctrl-b x` - Close current pane
+
+**Window Management:**
+- `Ctrl-b c` - Create new window
+- `Ctrl-b n` - Next window
+- `Ctrl-b p` - Previous window
+- `Ctrl-b ,` - Rename current window
+
+### Why Mouse Mode is Essential
+
+Without mouse mode enabled, scrolling in tmux is painful (`Ctrl-b [`, arrow keys, then `q` to exit). With mouse mode:
+- **Just scroll** with your mouse wheel - it works naturally
+- **Click** to select panes (if you use split screens)
+- **Click and drag** to select text
+- **Double-click** to select a word
+
+### Quick Setup
+
+```bash
+# Create the recommended config
+cat > ~/.tmux.conf << 'EOF'
+set -g mouse on
+set -g history-limit 10000
+setw -g mode-keys vi
+set-option -g allow-rename off
+set -g base-index 1
+setw -g pane-base-index 1
+set -sg escape-time 10
+set -g default-terminal "screen-256color"
+bind | split-window -h
+bind - split-window -v
+unbind '"'
+unbind %
+bind r source-file ~/.tmux.conf \; display-message "Config reloaded!"
+EOF
+
+# Reload all existing claude-workspace sessions
+tmux source-file ~/.tmux.conf
+```
+
+The tool handles session creation, switching, and attachment automatically - you just need to configure tmux once for a better experience!
 
 ## Troubleshooting
 
@@ -401,6 +499,24 @@ Check that `.claude/CLAUDE.md` exists in your repo. If you created the workspace
 ```bash
 claude-workspace create <name> <path>  # Will error if exists
 # Or manually copy the CLAUDE.md template from another workspace
+```
+
+### Mouse scrolling doesn't work in tmux
+
+Enable mouse mode in your `~/.tmux.conf`:
+```bash
+set -g mouse on
+```
+
+Then reload the config inside tmux: `Ctrl-b` then `:source-file ~/.tmux.conf`
+
+See the [tmux Configuration](#tmux-configuration-for-beginners) section above for the full recommended setup.
+
+### Can't scroll back far enough in tmux
+
+Increase the scrollback buffer in `~/.tmux.conf`:
+```bash
+set -g history-limit 10000  # Default is usually 2000
 ```
 
 ## Code Quality & Security

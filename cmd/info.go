@@ -83,3 +83,7 @@ var infoCmd = &cobra.Command{
 		return nil
 	},
 }
+
+func init() {
+	infoCmd.ValidArgsFunction = validWorkspaceNames
+}

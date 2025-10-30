@@ -10,6 +10,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	listArchived bool
+)
+
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all workspaces",
@@ -36,6 +40,10 @@ var listCmd = &cobra.Command{
 		}
 		var entries []wsEntry
 		for name, ws := range cfg.Workspaces {
+			// Skip archived workspaces unless explicitly requested
+			if !listArchived && ws.Status == config.StatusArchived {
+				continue
+			}
 			entries = append(entries, wsEntry{name: name, ws: ws})
 		}
 		sort.Slice(entries, func(i, j int) bool {
@@ -130,4 +138,8 @@ func formatTimeAgo(t time.Time) string {
 		}
 		return fmt.Sprintf("%dd ago", days)
 	}
+}
+
+func init() {
+	listCmd.Flags().BoolVar(&listArchived, "archived", false, "Include archived workspaces in the list")
 }

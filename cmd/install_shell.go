@@ -12,6 +12,12 @@ import (
 const shellIntegration = `
 # claude-workspace shell integration
 cw() {
+  # Pass through completion requests directly without capturing output
+  if [ "$1" = "__complete" ]; then
+    claude-workspace "$@"
+    return $?
+  fi
+
   local output
   output=$(claude-workspace "$@" 2>&1)
   local exit_code=$?
@@ -139,6 +145,9 @@ Adds the 'cw' function to your ~/.zshrc or ~/.bashrc:
 # claude-workspace completion
 fpath=(~/.zsh/completion $fpath)
 autoload -Uz compinit && compinit
+
+# Make cw use the same completion as claude-workspace
+compdef _claude-workspace cw
 `)
 			if _, err := f.WriteString(completionSetup); err != nil {
 				return fmt.Errorf("failed to write completion setup: %w", err)
@@ -147,6 +156,9 @@ autoload -Uz compinit && compinit
 			completionSetup := fmt.Sprintf(`
 # claude-workspace completion
 source %s
+
+# Make cw use the same completion as claude-workspace
+complete -F _claude-workspace cw
 `, completionPath)
 			if _, err := f.WriteString(completionSetup); err != nil {
 				return fmt.Errorf("failed to write completion setup: %w", err)
