@@ -81,10 +81,12 @@ Example:
 			return fmt.Errorf("workspace '%s' has no active tmux session. Use 'cw start %s' instead.", workspaceName, workspaceName)
 		}
 
-		fmt.Printf("Restarting Claude session in workspace '%s'...\n", workspaceName)
+		fmt.Println()
+		fmt.Printf("🔄 Restarting Claude session in workspace '%s'...\n", workspaceName)
+		fmt.Println()
 
 		// Kill the Claude process directly by finding its PID
-		fmt.Println("  • Finding Claude process...")
+		fmt.Println("  [1/4] Finding Claude process...")
 
 		// Find the PID of the tmux pane
 		getPaneCmd := exec.Command("tmux", "list-panes", "-t", sessionName, "-F", "#{pane_pid}")
@@ -95,7 +97,7 @@ Example:
 		panePID := strings.TrimSpace(string(output))
 
 		if panePID != "" {
-			fmt.Printf("  • Killing Claude process tree (pane PID: %s)...\n", panePID)
+			fmt.Printf("  [2/4] Terminating Claude process (PID: %s)...\n", panePID)
 
 			// Kill all child processes of the tmux pane
 			// Use pkill to find and kill any 'claude' processes under this pane
@@ -103,6 +105,7 @@ Example:
 			_ = killCmd.Run() // Ignore errors if no claude process found
 
 			// Give it a moment to terminate gracefully
+			fmt.Println("        Waiting for graceful shutdown...")
 			if err := exec.Command("sleep", "0.5").Run(); err != nil {
 				// Not critical if sleep fails
 			}
@@ -110,16 +113,27 @@ Example:
 			// Force kill if still alive
 			killCmd = exec.Command("pkill", "-KILL", "-P", panePID, "claude")
 			_ = killCmd.Run() // Ignore errors
+			fmt.Println("        ✓ Process terminated")
+		} else {
+			fmt.Println("  [2/4] No active Claude process found (skipping)")
 		}
 
 		// Clear the command line
-		fmt.Println("  • Clearing command line...")
+		fmt.Println("  [3/4] Clearing tmux command line...")
 		if err := sessionMgr.SendKeysLiteral(sessionName, "C-c"); err != nil {
 			return fmt.Errorf("failed to send Ctrl-C: %w", err)
 		}
 		if err := sessionMgr.SendKeysLiteral(sessionName, "C-u"); err != nil {
 			return fmt.Errorf("failed to clear line: %w", err)
 		}
+		fmt.Println("        ✓ Command line cleared")
+
+		// Start new Claude session
+		fmt.Println("  [4/4] Starting new Claude session...")
+		if err := sessionMgr.SendKeys(sessionName, cfg.Settings.ClaudeCommand); err != nil {
+			return fmt.Errorf("failed to start Claude: %w", err)
+		}
+		fmt.Println("        ✓ Claude session started")
 
 		// Display continuation prompt
 		continuation := wsMgr.GetContinuation(workspaceName)
@@ -150,14 +164,10 @@ Example:
 			fmt.Println()
 		}
 
-		// Start new Claude session
-		fmt.Println("  • Starting new Claude session...")
-		if err := sessionMgr.SendKeys(sessionName, cfg.Settings.ClaudeCommand); err != nil {
-			return fmt.Errorf("failed to start Claude: %w", err)
-		}
-
 		fmt.Println()
-		fmt.Printf("✓ Restarted Claude session in workspace '%s'\n", workspaceName)
+		fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+		fmt.Printf("✅ Successfully restarted Claude session in '%s'\n", workspaceName)
+		fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 		fmt.Println()
 		fmt.Println("Tip: Attach to the session with:")
 		fmt.Printf("  cw start %s\n", workspaceName)
@@ -169,10 +179,12 @@ Example:
 // promptSaveContinuation prompts the user to save continuation before restarting
 func promptSaveContinuation(wsMgr *workspace.Manager, workspaceName string) error {
 	fmt.Println()
-	fmt.Println("───────────────────────────────────────────────────────────")
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	fmt.Println("⚠️  USER INPUT REQUIRED")
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	fmt.Println()
 	fmt.Println("Before restarting, please update the continuation to preserve")
 	fmt.Println("your current progress for the next session.")
-	fmt.Println("───────────────────────────────────────────────────────────")
 	fmt.Println()
 
 	// Show current continuation if exists
@@ -186,7 +198,8 @@ func promptSaveContinuation(wsMgr *workspace.Manager, workspaceName string) erro
 	}
 
 	fmt.Println("Enter new continuation (describe current work, what's done, what's next):")
-	fmt.Println("Press Ctrl-D (EOF) when finished, or just press Enter to skip.")
+	fmt.Println("  • Press Ctrl-D (EOF) when finished")
+	fmt.Println("  • Press Enter on empty line to skip and keep existing continuation")
 	fmt.Println()
 
 	// Read multiline input
@@ -214,7 +227,7 @@ func promptSaveContinuation(wsMgr *workspace.Manager, workspaceName string) erro
 
 	if continuation == "" {
 		fmt.Println()
-		fmt.Println("No continuation entered. Using existing continuation.")
+		fmt.Println("⏭️  Skipped - keeping existing continuation")
 		fmt.Println()
 		return nil
 	}
@@ -226,6 +239,7 @@ func promptSaveContinuation(wsMgr *workspace.Manager, workspaceName string) erro
 
 	fmt.Println()
 	fmt.Printf("✓ Saved continuation for workspace '%s'\n", workspaceName)
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	fmt.Println()
 
 	return nil
