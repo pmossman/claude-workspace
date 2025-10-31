@@ -9,8 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const shellIntegration = `
-# claudew shell integration
+const shellIntegration = `# claudew shell integration
 claudew() {
   # Pass through completion requests directly without capturing output
   if [ "$1" = "__complete" ]; then
@@ -57,6 +56,24 @@ claudew() {
       ;;
   esac
 }
+
+# Short alias
+alias cw='claudew'
+`
+
+const zshCompletionSetup = `# claudew completion setup for zsh
+# Add completion directory to fpath
+fpath=(~/.zsh/completion $fpath)
+
+# Source the completion function directly
+source ~/.zsh/completion/_claudew
+
+# Register the completion function
+compdef _claudew claudew
+`
+
+const bashCompletionSetup = `# claudew completion setup for bash
+source ~/.claudew-completion.bash
 `
 
 // isShellIntegrationInstalled checks if shell integration is already installed
@@ -136,9 +153,24 @@ Use --force to reinstall if already installed (useful after updates).`,
 		home, _ := os.UserHomeDir()
 		shell := os.Getenv("SHELL")
 
-		// Generate and install completion
+		// Create ~/.claudew directory for integration files
+		claudewDir := filepath.Join(home, ".claudew")
+		if err := os.MkdirAll(claudewDir, 0755); err != nil {
+			return fmt.Errorf("failed to create %s: %w", claudewDir, err)
+		}
+
+		// Write shell integration to ~/.claudew/shell-integration.sh
+		shellIntegrationPath := filepath.Join(claudewDir, "shell-integration.sh")
+		if err := os.WriteFile(shellIntegrationPath, []byte(shellIntegration), 0644); err != nil {
+			return fmt.Errorf("failed to write shell integration: %w", err)
+		}
+
+		// Generate and write completion files
 		var completionScript string
 		var completionPath string
+		var completionSetupPath string
+		var completionSetupContent string
+
 		if strings.Contains(shell, "zsh") {
 			// Generate zsh completion
 			completionDir := filepath.Join(home, ".zsh", "completion")
@@ -155,22 +187,28 @@ Use --force to reinstall if already installed (useful after updates).`,
 			completionScript = builder.String()
 
 			// Remove the extra "compdef _claudew claudew" line that Cobra adds (line 2)
-			// This line is incorrect as it tries to register the completion before the function is defined
 			lines := strings.Split(completionScript, "\n")
 			if len(lines) > 1 && strings.HasPrefix(lines[1], "compdef ") {
-				// Remove line 2 and rejoin
 				completionScript = strings.Join(append(lines[:1], lines[2:]...), "\n")
 			}
+
+			// Write completion setup to ~/.claudew/completion.zsh
+			completionSetupPath = filepath.Join(claudewDir, "completion.zsh")
+			completionSetupContent = zshCompletionSetup
 		} else {
 			// Generate bash completion
 			completionPath = filepath.Join(home, ".claudew-completion.bash")
 
-			// Generate completion script to string
+			// Generate completion script
 			var builder strings.Builder
 			if err := rootCmd.GenBashCompletion(&builder); err != nil {
 				return fmt.Errorf("failed to generate bash completion: %w", err)
 			}
 			completionScript = builder.String()
+
+			// Write completion setup to ~/.claudew/completion.bash
+			completionSetupPath = filepath.Join(claudewDir, "completion.bash")
+			completionSetupContent = bashCompletionSetup
 		}
 
 		// Write completion script
@@ -178,51 +216,38 @@ Use --force to reinstall if already installed (useful after updates).`,
 			return fmt.Errorf("failed to write completion script: %w", err)
 		}
 
-		// Append integration and completion sourcing
+		// Write completion setup file
+		if err := os.WriteFile(completionSetupPath, []byte(completionSetupContent), 0644); err != nil {
+			return fmt.Errorf("failed to write completion setup: %w", err)
+		}
+
+		// Append source statements to rc file
 		f, err := os.OpenFile(rcFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 		if err != nil {
 			return fmt.Errorf("failed to open %s: %w", rcFile, err)
 		}
 		defer f.Close()
 
-		// Write shell integration
-		if _, err := f.WriteString(shellIntegration); err != nil {
+		rcAdditions := fmt.Sprintf(`
+# claudew shell integration - managed by 'claudew install-shell'
+[ -f %s ] && source %s
+[ -f %s ] && source %s
+`, shellIntegrationPath, shellIntegrationPath, completionSetupPath, completionSetupPath)
+
+		if _, err := f.WriteString(rcAdditions); err != nil {
 			return fmt.Errorf("failed to write to %s: %w", rcFile, err)
 		}
 
-		// Add completion sourcing
-		if strings.Contains(shell, "zsh") {
-			completionSetup := `
-# claudew completion
-fpath=(~/.zsh/completion $fpath)
-if ! command -v compinit > /dev/null 2>&1; then
-  autoload -Uz compinit && compinit
-fi
-compdef _claudew claudew
-`
-			if _, err := f.WriteString(completionSetup); err != nil {
-				return fmt.Errorf("failed to write completion setup: %w", err)
-			}
-		} else {
-			completionSetup := fmt.Sprintf(`
-# claudew completion
-source %s
-`, completionPath)
-			if _, err := f.WriteString(completionSetup); err != nil {
-				return fmt.Errorf("failed to write completion setup: %w", err)
-			}
-		}
-
 		fmt.Println("✓ Shell integration installed")
-		fmt.Printf("  Location: %s\n", rcFile)
+		fmt.Printf("  Shell config: %s\n", rcFile)
+		fmt.Printf("  Integration: %s\n", shellIntegrationPath)
 		fmt.Printf("  Completion: %s\n", completionPath)
 		fmt.Println("\nAvailable commands:")
 		fmt.Println("  claudew              - Interactive super-prompt (workspaces, clones, actions)")
 		fmt.Println("  claudew start <name> - Start a workspace")
 		fmt.Println("  claudew create       - Create a workspace")
-		fmt.Println("\n✓ Tab completion enabled for all claudew commands")
-		fmt.Println("\nTip: Create an alias for shorter typing:")
-		fmt.Println("  echo \"alias cw='claudew'\" >> " + rcFile)
+		fmt.Println("\n✓ Tab completion enabled")
+		fmt.Println("\nNote: The 'cw' alias is automatically created for shorter typing")
 		fmt.Println()
 		fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 		fmt.Println("⚠️  ACTION REQUIRED: Activate shell integration")
@@ -360,6 +385,10 @@ After uninstalling, you can reinstall with: claudew install-shell`,
 			os.Remove(oldCompPath) // Ignore errors
 			os.Remove(newCompPath) // Ignore errors
 		}
+
+		// Clean up ~/.claudew directory
+		claudewDir := filepath.Join(home, ".claudew")
+		os.RemoveAll(claudewDir) // Remove directory and all contents
 
 		fmt.Println("✓ Shell integration uninstalled")
 		fmt.Printf("  Cleaned up: %s\n", rcFile)
