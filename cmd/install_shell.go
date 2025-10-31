@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	_ "embed"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,72 +10,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const shellIntegration = `# claudew shell integration
-claudew() {
-  # Pass through completion requests directly without capturing output
-  if [ "$1" = "__complete" ]; then
-    command claudew "$@"
-    return $?
-  fi
+// Embed shell integration files from the cmd/shell/ directory
+// These are copied to ~/.claudew/ during installation
+var (
+	//go:embed shell/shell-integration.sh
+	shellIntegrationScript string
 
-  # Only capture output for commands that may use CD: marker
-  # All other commands pass through directly for real-time output
-  case "$1" in
-    cd|clones|select|"")
-      # These commands might output CD: marker for navigation
-      local output
-      output=$(command claudew "$@" 2>&1)
-      local exit_code=$?
+	//go:embed shell/completion.zsh
+	zshCompletionSetup string
 
-      # Check if output contains CD: marker (for clone navigation)
-      # Use CD::: as delimiter to handle paths with colons
-      if echo "$output" | grep -q "^CD:::"; then
-        local clone_path=$(echo "$output" | grep "^CD:::" | sed 's/^CD::://')
-        if [ -n "$clone_path" ]; then
-          if [ -d "$clone_path" ]; then
-            cd "$clone_path" || {
-              echo "❌ Error: Failed to change directory to: $clone_path" >&2
-              return 1
-            }
-            echo "📂 Changed to: $clone_path"
-            return 0
-          else
-            echo "❌ Error: Directory does not exist: $clone_path" >&2
-            return 1
-          fi
-        fi
-      fi
-
-      # Otherwise, just display the output normally
-      echo "$output"
-      return $exit_code
-      ;;
-    *)
-      # All other commands: pass through directly (no output buffering)
-      command claudew "$@"
-      return $?
-      ;;
-  esac
-}
-
-# Short alias
-alias cw='claudew'
-`
-
-const zshCompletionSetup = `# claudew completion setup for zsh
-# Add completion directory to fpath
-fpath=(~/.zsh/completion $fpath)
-
-# Source the completion function directly
-source ~/.zsh/completion/_claudew
-
-# Register the completion function
-compdef _claudew claudew
-`
-
-const bashCompletionSetup = `# claudew completion setup for bash
-source ~/.claudew-completion.bash
-`
+	//go:embed shell/completion.bash
+	bashCompletionSetup string
+)
 
 // isShellIntegrationInstalled checks if shell integration is already installed
 func isShellIntegrationInstalled() (bool, string, error) {
@@ -161,7 +108,7 @@ Use --force to reinstall if already installed (useful after updates).`,
 
 		// Write shell integration to ~/.claudew/shell-integration.sh
 		shellIntegrationPath := filepath.Join(claudewDir, "shell-integration.sh")
-		if err := os.WriteFile(shellIntegrationPath, []byte(shellIntegration), 0644); err != nil {
+		if err := os.WriteFile(shellIntegrationPath, []byte(shellIntegrationScript), 0644); err != nil {
 			return fmt.Errorf("failed to write shell integration: %w", err)
 		}
 
