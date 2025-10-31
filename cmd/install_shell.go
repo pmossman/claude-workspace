@@ -178,6 +178,7 @@ fpath=(~/.zsh/completion $fpath)
 if ! command -v compinit > /dev/null 2>&1; then
   autoload -Uz compinit && compinit
 fi
+compdef _claudew claudew
 `
 			if _, err := f.WriteString(completionSetup); err != nil {
 				return fmt.Errorf("failed to write completion setup: %w", err)
