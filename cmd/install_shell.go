@@ -90,6 +90,10 @@ func isShellIntegrationInstalled() (bool, string, error) {
 	return installed, rcFile, nil
 }
 
+var (
+	installShellForce bool
+)
+
 var installShellCmd = &cobra.Command{
 	Use:   "install-shell",
 	Short: "Install shell integration (adds claudew function to your shell)",
@@ -101,7 +105,9 @@ binary and adds directory navigation capability.
   claudew - Interactive super-prompt with workspace management and clone navigation
 
 You can create a short alias in your shell config if desired:
-  alias cw='claudew'`,
+  alias cw='claudew'
+
+Use --force to reinstall if already installed (useful after updates).`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Check if already installed
 		installed, rcFile, err := isShellIntegrationInstalled()
@@ -109,7 +115,7 @@ You can create a short alias in your shell config if desired:
 			return err
 		}
 
-		if installed {
+		if installed && !installShellForce {
 			fmt.Println("✓ Shell integration already installed")
 			fmt.Printf("  Location: %s\n", rcFile)
 			fmt.Println("\nAvailable commands:")
@@ -118,7 +124,13 @@ You can create a short alias in your shell config if desired:
 			fmt.Println("  claudew create       - Create a workspace")
 			fmt.Println("\nTip: Create an alias for shorter typing:")
 			fmt.Println("  alias cw='claudew'")
+			fmt.Println("\nTo reinstall or update: claudew install-shell --force")
 			return nil
+		}
+
+		if installShellForce && installed {
+			fmt.Println("⚠️  Force reinstalling shell integration...")
+			fmt.Println()
 		}
 
 		home, _ := os.UserHomeDir()
@@ -216,4 +228,8 @@ source %s
 
 		return nil
 	},
+}
+
+func init() {
+	installShellCmd.Flags().BoolVarP(&installShellForce, "force", "f", false, "Force reinstall even if already installed")
 }
