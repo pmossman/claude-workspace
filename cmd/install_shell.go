@@ -153,6 +153,14 @@ Use --force to reinstall if already installed (useful after updates).`,
 				return fmt.Errorf("failed to generate zsh completion: %w", err)
 			}
 			completionScript = builder.String()
+
+			// Remove the extra "compdef _claudew claudew" line that Cobra adds (line 2)
+			// This line is incorrect as it tries to register the completion before the function is defined
+			lines := strings.Split(completionScript, "\n")
+			if len(lines) > 1 && strings.HasPrefix(lines[1], "compdef ") {
+				// Remove line 2 and rejoin
+				completionScript = strings.Join(append(lines[:1], lines[2:]...), "\n")
+			}
 		} else {
 			// Generate bash completion
 			completionPath = filepath.Join(home, ".claudew-completion.bash")
