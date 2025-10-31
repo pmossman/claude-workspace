@@ -26,6 +26,7 @@ func init() {
 	// Register subcommands
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(installShellCmd)
+	rootCmd.AddCommand(uninstallShellCmd)
 	rootCmd.AddCommand(createCmd)
 	rootCmd.AddCommand(startCmd)
 	rootCmd.AddCommand(listCmd)

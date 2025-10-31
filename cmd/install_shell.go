@@ -230,6 +230,140 @@ source %s
 	},
 }
 
+var uninstallShellCmd = &cobra.Command{
+	Use:   "uninstall-shell",
+	Short: "Uninstall shell integration",
+	Long: `Removes the shell integration from your ~/.zshrc or ~/.bashrc.
+
+This will remove:
+- The claudew() shell function
+- Completion setup
+- Old claude-workspace integration (if present)
+
+After uninstalling, you can reinstall with: claudew install-shell`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return fmt.Errorf("failed to get home directory: %w", err)
+		}
+
+		// Detect shell
+		shell := os.Getenv("SHELL")
+		var rcFile string
+		if strings.Contains(shell, "zsh") {
+			rcFile = filepath.Join(home, ".zshrc")
+		} else if strings.Contains(shell, "bash") {
+			rcFile = filepath.Join(home, ".bashrc")
+		} else {
+			return fmt.Errorf("unsupported shell: %s (only bash and zsh supported)", shell)
+		}
+
+		// Read current rc file
+		content, err := os.ReadFile(rcFile)
+		if err != nil {
+			return fmt.Errorf("failed to read %s: %w", rcFile, err)
+		}
+
+		originalContent := string(content)
+		hasOldIntegration := strings.Contains(originalContent, "# claude-workspace shell integration")
+		hasNewIntegration := strings.Contains(originalContent, "# claudew shell integration")
+
+		if !hasOldIntegration && !hasNewIntegration {
+			fmt.Println("✓ No shell integration found - nothing to uninstall")
+			return nil
+		}
+
+		// Remove old integration markers
+		markers := []string{
+			"# claude-workspace shell integration",
+			"# claudew shell integration",
+			"# claude-workspace completion",
+			"# claudew completion",
+		}
+
+		lines := strings.Split(originalContent, "\n")
+		var newLines []string
+		skipUntilBlank := false
+
+		for i, line := range lines {
+			// Check if this line is a marker
+			isMarker := false
+			for _, marker := range markers {
+				if strings.TrimSpace(line) == marker {
+					isMarker = true
+					skipUntilBlank = true
+					break
+				}
+			}
+
+			if isMarker {
+				// Skip this line and start looking for the end of the section
+				continue
+			}
+
+			if skipUntilBlank {
+				// Skip until we hit a blank line or a non-integration line
+				trimmed := strings.TrimSpace(line)
+
+				// Check if we've reached the end of the integration section
+				// Integration ends at: blank line, or a line that starts with # but isn't part of completion
+				if trimmed == "" {
+					// Found blank line - check if next line is also integration-related
+					if i+1 < len(lines) {
+						nextLine := strings.TrimSpace(lines[i+1])
+						// If next line is a known integration marker, keep skipping
+						isNextMarker := false
+						for _, marker := range markers {
+							if nextLine == marker {
+								isNextMarker = true
+								break
+							}
+						}
+						if isNextMarker {
+							continue // Keep skipping
+						}
+					}
+					skipUntilBlank = false
+					newLines = append(newLines, line) // Keep the blank line
+				}
+				// Skip lines that look like integration content
+				continue
+			}
+
+			// Keep this line
+			newLines = append(newLines, line)
+		}
+
+		// Write back
+		newContent := strings.Join(newLines, "\n")
+		if err := os.WriteFile(rcFile, []byte(newContent), 0644); err != nil {
+			return fmt.Errorf("failed to write %s: %w", rcFile, err)
+		}
+
+		// Clean up completion files
+		if strings.Contains(shell, "zsh") {
+			oldCompPath := filepath.Join(home, ".zsh", "completion", "_claude-workspace")
+			newCompPath := filepath.Join(home, ".zsh", "completion", "_claudew")
+			os.Remove(oldCompPath) // Ignore errors
+			os.Remove(newCompPath) // Ignore errors
+		} else {
+			oldCompPath := filepath.Join(home, ".claude-workspace-completion.bash")
+			newCompPath := filepath.Join(home, ".claudew-completion.bash")
+			os.Remove(oldCompPath) // Ignore errors
+			os.Remove(newCompPath) // Ignore errors
+		}
+
+		fmt.Println("✓ Shell integration uninstalled")
+		fmt.Printf("  Cleaned up: %s\n", rcFile)
+		fmt.Println("\nTo reinstall:")
+		fmt.Println("  claudew install-shell")
+		fmt.Println("\nReload your shell:")
+		fmt.Printf("  source %s\n", rcFile)
+
+		return nil
+	},
+}
+
 func init() {
 	installShellCmd.Flags().BoolVarP(&installShellForce, "force", "f", false, "Force reinstall even if already installed")
 }
