@@ -8,9 +8,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pmossman/claude-workspace/internal/config"
-	"github.com/pmossman/claude-workspace/internal/session"
-	"github.com/pmossman/claude-workspace/internal/workspace"
+	"github.com/pmossman/claudew/internal/config"
+	"github.com/pmossman/claudew/internal/session"
+	"github.com/pmossman/claudew/internal/workspace"
 	"github.com/spf13/cobra"
 )
 
@@ -49,10 +49,10 @@ var startCmd = &cobra.Command{
 	Long: `Starts or attaches to a tmux session for the workspace.
 
 Interactive mode:
-  cw start
+  claudew start
 
 Direct mode:
-  cw start <workspace-name>`,
+  claudew start <workspace-name>`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Load config
@@ -225,7 +225,7 @@ Direct mode:
 		fmt.Println("Tmux Quick Reference:")
 		fmt.Println("  Ctrl-b d     - Detach (keeps Claude running)")
 		fmt.Println("  Ctrl-b s     - Switch between sessions")
-		fmt.Println("  cw           - Start/switch workspaces")
+		fmt.Println("  claudew           - Start/switch workspaces")
 		fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 		fmt.Println()
 
@@ -278,7 +278,7 @@ func interactiveWorkspaceSelect(cfg *config.Config) (string, error) {
 
 	if len(cfg.Workspaces) == 0 {
 		fmt.Println("No workspaces found.")
-		fmt.Println("Create one with: cw create")
+		fmt.Println("Create one with: claudew create")
 		return "", nil
 	}
 

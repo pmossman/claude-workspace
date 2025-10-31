@@ -8,10 +8,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pmossman/claude-workspace/internal/config"
-	"github.com/pmossman/claude-workspace/internal/git"
-	"github.com/pmossman/claude-workspace/internal/template"
-	"github.com/pmossman/claude-workspace/internal/workspace"
+	"github.com/pmossman/claudew/internal/config"
+	"github.com/pmossman/claudew/internal/git"
+	"github.com/pmossman/claudew/internal/template"
+	"github.com/pmossman/claudew/internal/workspace"
 	"github.com/spf13/cobra"
 )
 
@@ -26,13 +26,13 @@ var createCmd = &cobra.Command{
 	Long: `Creates a new workspace with clone management.
 
 Interactive mode (recommended):
-  cw create
+  claudew create
 
 Direct mode:
-  cw create feature-auth --remote airbyte
+  claudew create feature-auth --remote airbyte
 
 Legacy mode (without clone management):
-  cw create feature-auth ~/dev/my-repo`,
+  claudew create feature-auth ~/dev/my-repo`,
 	Args: cobra.MaximumNArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Load config
@@ -319,9 +319,9 @@ func interactiveCreate(cfg *config.Config) error {
 	if len(cfg.Remotes) == 0 {
 		fmt.Fprintln(tty, "No remotes registered yet.")
 		fmt.Fprintln(tty, "\nFirst, add a remote:")
-		fmt.Fprintln(tty, "  cw add-remote <name> <git-url> --clone-dir <path>")
+		fmt.Fprintln(tty, "  claudew add-remote <name> <git-url> --clone-dir <path>")
 		fmt.Fprintln(tty, "\nExample:")
-		fmt.Fprintln(tty, "  cw add-remote airbyte git@github.com:airbytehq/airbyte-platform-internal.git --clone-dir ~/dev/airbyte-clones")
+		fmt.Fprintln(tty, "  claudew add-remote airbyte git@github.com:airbytehq/airbyte-platform-internal.git --clone-dir ~/dev/airbyte-clones")
 		return fmt.Errorf("no remotes available")
 	}
 
@@ -452,7 +452,7 @@ func interactiveCreate(cfg *config.Config) error {
 	fmt.Printf("  Remote: %s\n", remoteName)
 	fmt.Printf("  Summary: %s\n", summary)
 	fmt.Printf("  Workspace dir: %s\n", workspaceDir)
-	fmt.Println("\nNext: cw start", name)
+	fmt.Println("\nNext: claudew start", name)
 
 	return nil
 }

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pmossman/claude-workspace/cmd"
+	"github.com/pmossman/claudew/cmd"
 )
 
 func main() {

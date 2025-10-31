@@ -1,4 +1,4 @@
-module github.com/pmossman/claude-workspace
+module github.com/pmossman/claudew
 
 go 1.25.1
 

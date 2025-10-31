@@ -1,4 +1,4 @@
-# claude-workspace
+# claudew
 
 **Manage multiple Claude Code sessions across different repos with automatic context preservation**
 
@@ -24,7 +24,7 @@ Think of it as "tmux + Claude Code + smart context management" in one tool.
 
 ```bash
 # Create a workspace tied to a repository
-$ cw create feature-auth ~/code/api-server --summary "Implementing OAuth2"
+$ claudew create feature-auth ~/code/api-server --summary "Implementing OAuth2"
 ✓ Created workspace 'feature-auth'
 ✓ Generated .claude/CLAUDE.md with context instructions
 ✓ Added .claude/ to .gitignore
@@ -43,7 +43,7 @@ $ cw
   → Browse clones (3 available)
 
 # Select a workspace, and you're dropped into a tmux session:
-$ cw start feature-auth
+$ claudew start feature-auth
 
 ═══════════════════════════════════════════
   Workspace: feature-auth
@@ -90,7 +90,7 @@ When working with multiple Claude Code agents across different repositories:
 
 ## ✨ The Solution
 
-**claude-workspace** provides:
+**claudew** provides:
 
 - ✅ **Named workspaces** tied to specific repository directories
 - ✅ **Automatic context preservation** - Claude maintains handoff prompts
@@ -107,46 +107,46 @@ When working with multiple Claude Code agents across different repositories:
 **Parallel feature development:**
 ```bash
 # Clone 1: Main feature
-cw create oauth-server ~/dev/api-clone-1
+claudew create oauth-server ~/dev/api-clone-1
 
 # Clone 2: Dependent microservice
-cw create oauth-client ~/dev/api-clone-2
+claudew create oauth-client ~/dev/api-clone-2
 
 # Clone 3: Testing & docs
-cw create oauth-testing ~/dev/api-clone-3
+claudew create oauth-testing ~/dev/api-clone-3
 ```
 
 **Long-running refactors:**
 ```bash
 # Week 1: Start major refactor
-cw create db-migration ~/code/app --summary "Postgres to MongoDB migration"
+claudew create db-migration ~/code/app --summary "Postgres to MongoDB migration"
 # ... work with Claude for hours ...
 # Ctrl-b d to detach
 
 # Week 2: Resume with full context
-cw start db-migration
+claudew start db-migration
 # Claude reads continuation.md and knows exactly where you left off
 ```
 
 **Rapid context switching:**
 ```bash
 # Working on feature A
-cw start feature-auth
+claudew start feature-auth
 
 # Urgent bug reported!
 # Ctrl-b d to detach
-cw start bug-production-leak
+claudew start bug-production-leak
 # ... fix bug with dedicated Claude ...
 
 # Back to feature work
-cw start feature-auth
+claudew start feature-auth
 # Right back where you left off
 ```
 
 **Team collaboration:**
 ```bash
 # Fork a teammate's workspace when taking over
-cw fork johns-feature my-continuation ~/code/repo
+claudew fork johns-feature my-continuation ~/code/repo
 
 # All context (decisions, research, progress) is preserved
 ```
@@ -177,7 +177,7 @@ Claude automatically maintains these files based on instructions in the workspac
 
 ```bash
 # Just run without arguments
-claude-workspace
+claudew
 ```
 
 Opens an fzf selector showing:
@@ -197,14 +197,14 @@ Opens an fzf selector showing:
 ### Install
 
 ```bash
-go install github.com/pmossman/claude-workspace@latest
+go install github.com/pmossman/claudew@latest
 ```
 
 Or build from source:
 
 ```bash
-git clone https://github.com/pmossman/claude-workspace.git
-cd claude-workspace
+git clone https://github.com/pmossman/claudew.git
+cd claudew
 go install
 ```
 
@@ -212,29 +212,29 @@ go install
 
 1. **Initialize and install shell integration**
    ```bash
-   claude-workspace init
-   claude-workspace install-shell
+   claudew init
+   claudew install-shell
    ```
 
-   Add to your `~/.zshrc` or `~/.bashrc`:
+   Activate the shell integration:
    ```bash
-   source ~/.claude-workspaces/shell-integration.sh
+   source ~/.zshrc  # or ~/.bashrc for bash
    ```
 
 2. **Create a workspace**
    ```bash
-   # Using the handy 'cw' alias (from shell integration)
-   cw create feature-auth ~/dev/my-repo --summary "OAuth implementation"
+   # Using claudew (create 'alias cw=claudew' for shorter typing)
+   claudew create feature-auth ~/dev/my-repo --summary "OAuth implementation"
    ```
 
 3. **Start working** (interactive selector)
    ```bash
-   cw    # Just type 'cw' - that's it!
+   claudew    # Just type 'cw' - that's it!
    ```
 
    Use arrow keys to select a workspace, press Enter. Or directly:
    ```bash
-   cw start feature-auth
+   claudew start feature-auth
    ```
 
 4. **Claude automatically maintains context**
@@ -244,25 +244,25 @@ go install
    ```bash
    # Press Ctrl-b d to detach (keeps Claude running)
    # Days later...
-   cw start feature-auth
+   claudew start feature-auth
    # Continuation prompt appears with full context!
    ```
 
 ## Commands
 
 ```bash
-cw                                  # Interactive selector (default)
-cw init                             # Initialize configuration
-cw create <name> <path> [--summary "..."]  # Create workspace
-cw start <name>                     # Start/attach to workspace
-cw list                             # List all workspaces
-cw info <name>                      # Show workspace details
-cw archive <name>                   # Archive completed workspace
-cw fork <from> <to> <path>          # Fork workspace context to new workspace
-cw install-shell                    # Install shell integration and tab completion
+claudew                                  # Interactive selector (default)
+claudew init                             # Initialize configuration
+claudew create <name> <path> [--summary "..."]  # Create workspace
+claudew start <name>                     # Start/attach to workspace
+claudew list                             # List all workspaces
+claudew info <name>                      # Show workspace details
+claudew archive <name>                   # Archive completed workspace
+claudew fork <from> <to> <path>          # Fork workspace context to new workspace
+claudew install-shell                    # Install shell integration and tab completion
 
 # Full command is also available
-claude-workspace <command>
+claudew <command>
 ```
 
 ## How It Works
@@ -342,10 +342,10 @@ Perfect for working on independent features in parallel:
 
 ```bash
 # Dev clone - feature A
-claude-workspace create feature-a ~/dev/my-repo
+claudew create feature-a ~/dev/my-repo
 
 # Alt clone - feature B
-claude-workspace create feature-b ~/alt/my-repo
+claudew create feature-b ~/alt/my-repo
 ```
 
 ### Forking Workspaces
@@ -353,7 +353,7 @@ claude-workspace create feature-b ~/alt/my-repo
 When branching work from an existing workspace:
 
 ```bash
-cw fork feature-a feature-a-v2 ~/dev/my-repo
+claudew fork feature-a feature-a-v2 ~/dev/my-repo
 ```
 
 Copies all context files from the source workspace to the new workspace.
@@ -363,14 +363,14 @@ Copies all context files from the source workspace to the new workspace.
 When work is complete:
 
 ```bash
-claude-workspace archive feature-auth
+claudew archive feature-auth
 ```
 
 Moves workspace to `~/.claude-workspaces/archived/` and removes `.claude/CLAUDE.md` from repo.
 
 ## tmux Configuration for Beginners
 
-This tool uses tmux to manage persistent sessions. While `claude-workspace` handles most tmux complexity for you, configuring tmux will greatly improve your experience.
+This tool uses tmux to manage persistent sessions. While `claudew` handles most tmux complexity for you, configuring tmux will greatly improve your experience.
 
 ### Recommended tmux Configuration
 
@@ -470,7 +470,7 @@ unbind %
 bind r source-file ~/.tmux.conf \; display-message "Config reloaded!"
 EOF
 
-# Reload all existing claude-workspace sessions
+# Reload all existing claudew sessions
 tmux source-file ~/.tmux.conf
 ```
 
@@ -481,7 +481,7 @@ The tool handles session creation, switching, and attachment automatically - you
 ### "Workspace has an active session"
 
 Another session is using this workspace. Either:
-- Attach to that session: `claude-workspace start <name>`
+- Attach to that session: `claudew start <name>`
 - Kill the other session: `tmux kill-session -t claude-ws-<name>`
 
 ### fzf not found
@@ -497,7 +497,7 @@ Install tmux: `brew install tmux` (macOS) or your package manager
 Check that `.claude/CLAUDE.md` exists in your repo. If you created the workspace before this tool was updated, regenerate it:
 
 ```bash
-claude-workspace create <name> <path>  # Will error if exists
+claudew create <name> <path>  # Will error if exists
 # Or manually copy the CLAUDE.md template from another workspace
 ```
 
@@ -554,7 +554,7 @@ go test -v ./...
 
 ## Contributing
 
-Issues and PRs welcome at https://github.com/pmossman/claude-workspace
+Issues and PRs welcome at https://github.com/pmossman/claudew
 
 ## License
 

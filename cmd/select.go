@@ -8,9 +8,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pmossman/claude-workspace/internal/config"
-	"github.com/pmossman/claude-workspace/internal/session"
-	"github.com/pmossman/claude-workspace/internal/workspace"
+	"github.com/pmossman/claudew/internal/config"
+	"github.com/pmossman/claudew/internal/session"
+	"github.com/pmossman/claudew/internal/workspace"
 	"github.com/spf13/cobra"
 )
 
@@ -390,7 +390,7 @@ func interactiveArchive(cfg *config.Config) error {
 func browseClones(cfg *config.Config) error {
 	if len(cfg.Clones) == 0 {
 		fmt.Println("No clones available.")
-		fmt.Println("Create one with: cw new-clone <remote>")
+		fmt.Println("Create one with: claudew new-clone <remote>")
 		return nil
 	}
 
@@ -442,7 +442,8 @@ func browseClones(cfg *config.Config) error {
 	clonePath := strings.TrimSpace(selected[:bracketIdx])
 
 	// Output CD marker for shell function to detect
-	fmt.Printf("CD:%s\n", clonePath)
+	// Use CD::: delimiter to handle paths with colons
+	fmt.Printf("CD:::%s\n", clonePath)
 
 	return nil
 }
@@ -451,7 +452,7 @@ func browseClones(cfg *config.Config) error {
 func interactiveNewClone(cfg *config.Config) error {
 	if len(cfg.Remotes) == 0 {
 		fmt.Println("No remotes registered.")
-		fmt.Println("Add one with: cw add-remote <name> <url> --clone-dir <path>")
+		fmt.Println("Add one with: claudew add-remote <name> <url> --clone-dir <path>")
 		return nil
 	}
 
@@ -643,7 +644,7 @@ var previewMenuCmd = &cobra.Command{
 			fmt.Println("  • Free the clone for other workspaces to use")
 			fmt.Println("  • Set status to 'idle'")
 			fmt.Println()
-			fmt.Println("The workspace can be restarted with 'cw start'")
+			fmt.Println("The workspace can be restarted with 'claudew start'")
 			fmt.Println("All context files are preserved")
 			return nil
 		}
@@ -776,7 +777,7 @@ func showWorkspacePreview(cfg *config.Config, name string) error {
 	return nil
 }
 
-// preview is a hidden command used by fzf to generate previews (for cw start)
+// preview is a hidden command used by fzf to generate previews (for claudew start)
 var previewCmd = &cobra.Command{
 	Use:    "preview <name>",
 	Hidden: true,

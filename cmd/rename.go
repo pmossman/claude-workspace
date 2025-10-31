@@ -6,8 +6,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/pmossman/claude-workspace/internal/config"
-	"github.com/pmossman/claude-workspace/internal/session"
+	"github.com/pmossman/claudew/internal/config"
+	"github.com/pmossman/claudew/internal/session"
 	"github.com/spf13/cobra"
 )
 

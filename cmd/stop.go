@@ -3,8 +3,8 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/pmossman/claude-workspace/internal/config"
-	"github.com/pmossman/claude-workspace/internal/session"
+	"github.com/pmossman/claudew/internal/config"
+	"github.com/pmossman/claudew/internal/session"
 	"github.com/spf13/cobra"
 )
 
@@ -14,7 +14,7 @@ var stopCmd = &cobra.Command{
 	Long: `Stops a workspace by killing its tmux session and freeing the associated clone.
 
 This is useful when you want to pause work on a workspace temporarily but don't want
-to archive it. The workspace remains available and can be restarted later with 'cw start'.
+to archive it. The workspace remains available and can be restarted later with 'claudew start'.
 
 What this does:
 - Kills the tmux session (if running)
@@ -23,8 +23,8 @@ What this does:
 - Preserves all workspace context files
 
 Example:
-  cw stop feature-auth       # Stop specific workspace
-  cw stop                    # Interactive: select workspace to stop`,
+  claudew stop feature-auth       # Stop specific workspace
+  claudew stop                    # Interactive: select workspace to stop`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Load config
@@ -97,7 +97,7 @@ Example:
 		fmt.Println("  • Tmux session killed")
 		fmt.Println("  • Clone freed for other workspaces")
 		fmt.Println("  • Workspace status set to idle")
-		fmt.Printf("\nResume with: cw start %s\n", workspaceName)
+		fmt.Printf("\nResume with: claudew start %s\n", workspaceName)
 
 		return nil
 	},

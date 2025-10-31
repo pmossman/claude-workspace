@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pmossman/claude-workspace/internal/config"
-	"github.com/pmossman/claude-workspace/internal/session"
+	"github.com/pmossman/claudew/internal/config"
+	"github.com/pmossman/claudew/internal/session"
 	"github.com/spf13/cobra"
 )
 
@@ -42,8 +42,8 @@ var initCmd = &cobra.Command{
 			// If we can't check (unsupported shell), just show next steps
 			fmt.Println("\nNext steps:")
 			fmt.Println("  1. Install shell integration: claude-workspace install-shell")
-			fmt.Println("  2. Add a remote: cw add-remote <name> <git-url> --clone-dir <path>")
-			fmt.Println("  3. Create a workspace: cw create")
+			fmt.Println("  2. Add a remote: claudew add-remote <name> <git-url> --clone-dir <path>")
+			fmt.Println("  3. Create a workspace: claudew create")
 			fmt.Println("\nOr use the interactive selector: cw")
 			return nil
 		}
@@ -70,8 +70,8 @@ var initCmd = &cobra.Command{
 		}
 
 		fmt.Println("\nNext steps:")
-		fmt.Println("  1. Add a remote: cw add-remote <name> <git-url> --clone-dir <path>")
-		fmt.Println("  2. Create a workspace: cw create")
+		fmt.Println("  1. Add a remote: claudew add-remote <name> <git-url> --clone-dir <path>")
+		fmt.Println("  2. Create a workspace: claudew create")
 		fmt.Println("\nOr use the interactive selector: cw")
 
 		return nil

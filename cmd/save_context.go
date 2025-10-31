@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pmossman/claude-workspace/internal/config"
-	"github.com/pmossman/claude-workspace/internal/workspace"
+	"github.com/pmossman/claudew/internal/config"
+	"github.com/pmossman/claudew/internal/workspace"
 	"github.com/spf13/cobra"
 )
 
@@ -28,8 +28,8 @@ The command will prompt you to describe:
 - What should be done next
 
 Example:
-  cw save-context feature-auth    # Save context for specific workspace
-  cw save-context                 # Interactive: select workspace`,
+  claudew save-context feature-auth    # Save context for specific workspace
+  claudew save-context                 # Interactive: select workspace`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Load config
@@ -116,7 +116,7 @@ Example:
 		fmt.Println()
 		fmt.Printf("✓ Saved continuation for workspace '%s'\n", workspaceName)
 		fmt.Println()
-		fmt.Printf("Next: Resume with 'cw start %s' or restart with 'cw restart %s'\n", workspaceName, workspaceName)
+		fmt.Printf("Next: Resume with 'claudew start %s' or restart with 'claudew restart %s'\n", workspaceName, workspaceName)
 
 		return nil
 	},

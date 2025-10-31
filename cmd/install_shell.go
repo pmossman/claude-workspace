@@ -10,31 +10,52 @@ import (
 )
 
 const shellIntegration = `
-# claude-workspace shell integration
-cw() {
+# claudew shell integration
+claudew() {
   # Pass through completion requests directly without capturing output
   if [ "$1" = "__complete" ]; then
-    claude-workspace "$@"
+    command claudew "$@"
     return $?
   fi
 
-  local output
-  output=$(claude-workspace "$@" 2>&1)
-  local exit_code=$?
+  # Only capture output for commands that may use CD: marker
+  # All other commands pass through directly for real-time output
+  case "$1" in
+    cd|clones|select|"")
+      # These commands might output CD: marker for navigation
+      local output
+      output=$(command claudew "$@" 2>&1)
+      local exit_code=$?
 
-  # Check if output starts with CD: marker (for clone navigation)
-  if echo "$output" | grep -q "^CD:"; then
-    local clone_path=$(echo "$output" | grep "^CD:" | cut -d: -f2-)
-    if [ -n "$clone_path" ] && [ -d "$clone_path" ]; then
-      cd "$clone_path" || return 1
-      echo "📂 Changed to: $clone_path"
-      return 0
-    fi
-  fi
+      # Check if output contains CD: marker (for clone navigation)
+      # Use CD::: as delimiter to handle paths with colons
+      if echo "$output" | grep -q "^CD:::"; then
+        local clone_path=$(echo "$output" | grep "^CD:::" | sed 's/^CD::://')
+        if [ -n "$clone_path" ]; then
+          if [ -d "$clone_path" ]; then
+            cd "$clone_path" || {
+              echo "❌ Error: Failed to change directory to: $clone_path" >&2
+              return 1
+            }
+            echo "📂 Changed to: $clone_path"
+            return 0
+          else
+            echo "❌ Error: Directory does not exist: $clone_path" >&2
+            return 1
+          fi
+        fi
+      fi
 
-  # Otherwise, just display the output normally
-  echo "$output"
-  return $exit_code
+      # Otherwise, just display the output normally
+      echo "$output"
+      return $exit_code
+      ;;
+    *)
+      # All other commands: pass through directly (no output buffering)
+      command claudew "$@"
+      return $?
+      ;;
+  esac
 }
 `
 
@@ -62,17 +83,25 @@ func isShellIntegrationInstalled() (bool, string, error) {
 		return false, "", fmt.Errorf("failed to read %s: %w", rcFile, err)
 	}
 
-	installed := strings.Contains(string(content), "# claude-workspace shell integration")
+	// Check for either old or new shell integration markers
+	hasOld := strings.Contains(string(content), "# claude-workspace shell integration")
+	hasNew := strings.Contains(string(content), "# claudew shell integration")
+	installed := hasOld || hasNew
 	return installed, rcFile, nil
 }
 
 var installShellCmd = &cobra.Command{
 	Use:   "install-shell",
-	Short: "Install shell integration (adds cw function to your shell)",
+	Short: "Install shell integration (adds claudew function to your shell)",
 	Long: `Installs shell integration for interactive features.
 
-Adds the 'cw' function to your ~/.zshrc or ~/.bashrc:
-  cw - Interactive super-prompt with workspace management and clone navigation`,
+Adds the 'claudew' function to your ~/.zshrc or ~/.bashrc which wraps the
+binary and adds directory navigation capability.
+
+  claudew - Interactive super-prompt with workspace management and clone navigation
+
+You can create a short alias in your shell config if desired:
+  alias cw='claudew'`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Check if already installed
 		installed, rcFile, err := isShellIntegrationInstalled()
@@ -84,9 +113,11 @@ Adds the 'cw' function to your ~/.zshrc or ~/.bashrc:
 			fmt.Println("✓ Shell integration already installed")
 			fmt.Printf("  Location: %s\n", rcFile)
 			fmt.Println("\nAvailable commands:")
-			fmt.Println("  cw              - Interactive super-prompt (workspaces, clones, actions)")
-			fmt.Println("  cw start <name> - Start a workspace")
-			fmt.Println("  cw create       - Create a workspace")
+			fmt.Println("  claudew              - Interactive super-prompt (workspaces, clones, actions)")
+			fmt.Println("  claudew start <name> - Start a workspace")
+			fmt.Println("  claudew create       - Create a workspace")
+			fmt.Println("\nTip: Create an alias for shorter typing:")
+			fmt.Println("  alias cw='claudew'")
 			return nil
 		}
 
@@ -102,7 +133,7 @@ Adds the 'cw' function to your ~/.zshrc or ~/.bashrc:
 			if err := os.MkdirAll(completionDir, 0755); err != nil {
 				return fmt.Errorf("failed to create completion directory: %w", err)
 			}
-			completionPath = filepath.Join(completionDir, "_claude-workspace")
+			completionPath = filepath.Join(completionDir, "_claudew")
 
 			// Generate completion script to string
 			var builder strings.Builder
@@ -112,7 +143,7 @@ Adds the 'cw' function to your ~/.zshrc or ~/.bashrc:
 			completionScript = builder.String()
 		} else {
 			// Generate bash completion
-			completionPath = filepath.Join(home, ".claude-workspace-completion.bash")
+			completionPath = filepath.Join(home, ".claudew-completion.bash")
 
 			// Generate completion script to string
 			var builder strings.Builder
@@ -141,24 +172,20 @@ Adds the 'cw' function to your ~/.zshrc or ~/.bashrc:
 
 		// Add completion sourcing
 		if strings.Contains(shell, "zsh") {
-			completionSetup := fmt.Sprintf(`
-# claude-workspace completion
+			completionSetup := `
+# claudew completion
 fpath=(~/.zsh/completion $fpath)
-autoload -Uz compinit && compinit
-
-# Make cw use the same completion as claude-workspace
-compdef _claude-workspace cw
-`)
+if ! command -v compinit > /dev/null 2>&1; then
+  autoload -Uz compinit && compinit
+fi
+`
 			if _, err := f.WriteString(completionSetup); err != nil {
 				return fmt.Errorf("failed to write completion setup: %w", err)
 			}
 		} else {
 			completionSetup := fmt.Sprintf(`
-# claude-workspace completion
+# claudew completion
 source %s
-
-# Make cw use the same completion as claude-workspace
-complete -F _claude-workspace cw
 `, completionPath)
 			if _, err := f.WriteString(completionSetup); err != nil {
 				return fmt.Errorf("failed to write completion setup: %w", err)
@@ -169,10 +196,12 @@ complete -F _claude-workspace cw
 		fmt.Printf("  Location: %s\n", rcFile)
 		fmt.Printf("  Completion: %s\n", completionPath)
 		fmt.Println("\nAvailable commands:")
-		fmt.Println("  cw              - Interactive super-prompt (workspaces, clones, actions)")
-		fmt.Println("  cw start <name> - Start a workspace")
-		fmt.Println("  cw create       - Create a workspace")
-		fmt.Println("\n✓ Tab completion enabled for all cw commands")
+		fmt.Println("  claudew              - Interactive super-prompt (workspaces, clones, actions)")
+		fmt.Println("  claudew start <name> - Start a workspace")
+		fmt.Println("  claudew create       - Create a workspace")
+		fmt.Println("\n✓ Tab completion enabled for all claudew commands")
+		fmt.Println("\nTip: Create an alias for shorter typing:")
+		fmt.Println("  echo \"alias cw='claudew'\" >> " + rcFile)
 		fmt.Println()
 		fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 		fmt.Println("⚠️  ACTION REQUIRED: Activate shell integration")

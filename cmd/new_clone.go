@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/pmossman/claude-workspace/internal/config"
-	"github.com/pmossman/claude-workspace/internal/git"
+	"github.com/pmossman/claudew/internal/config"
+	"github.com/pmossman/claudew/internal/git"
 	"github.com/spf13/cobra"
 )
 

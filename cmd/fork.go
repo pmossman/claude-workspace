@@ -5,9 +5,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pmossman/claude-workspace/internal/config"
-	"github.com/pmossman/claude-workspace/internal/template"
-	"github.com/pmossman/claude-workspace/internal/workspace"
+	"github.com/pmossman/claudew/internal/config"
+	"github.com/pmossman/claudew/internal/template"
+	"github.com/pmossman/claudew/internal/workspace"
 	"github.com/spf13/cobra"
 )
 
@@ -81,7 +81,7 @@ Useful when branching work to a new feature from an existing workspace.`,
 		fmt.Printf("  Repository: %s\n", absRepoPath)
 		fmt.Printf("  Workspace dir: %s\n", workspaceDir)
 		fmt.Println("\nContext files copied from source workspace.")
-		fmt.Println("Next: cw start", toName)
+		fmt.Println("Next: claudew start", toName)
 
 		return nil
 	},

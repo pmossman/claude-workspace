@@ -8,8 +8,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pmossman/claude-workspace/internal/config"
-	"github.com/pmossman/claude-workspace/internal/git"
+	"github.com/pmossman/claudew/internal/config"
+	"github.com/pmossman/claudew/internal/git"
 	"github.com/spf13/cobra"
 )
 
@@ -238,7 +238,8 @@ func interactiveCloneSelect(cfg *config.Config, remoteName string) error {
 	selectedPath := parts[0]
 
 	// Output CD marker for shell function to detect
-	fmt.Printf("CD:%s\n", selectedPath)
+	// Use CD::: delimiter to handle paths with colons
+	fmt.Printf("CD:::%s\n", selectedPath)
 
 	return nil
 }

@@ -5,10 +5,13 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "claude-workspace",
+	Use:   "claudew",
 	Short: "Manage Claude Code workspaces with context preservation",
-	Long: `claude-workspace is a tool for managing multiple Claude Code sessions across
-different repository clones, with automatic context preservation and session management.`,
+	Long: `claudew is a tool for managing multiple Claude Code sessions across
+different repository clones, with automatic context preservation and session management.
+
+The shell function 'claudew' wraps this binary and adds directory navigation features.
+Install it with: claudew install-shell`,
 	RunE: selectCmd.RunE, // Default to interactive selector
 }
 

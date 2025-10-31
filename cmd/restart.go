@@ -8,9 +8,9 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/pmossman/claude-workspace/internal/config"
-	"github.com/pmossman/claude-workspace/internal/session"
-	"github.com/pmossman/claude-workspace/internal/workspace"
+	"github.com/pmossman/claudew/internal/config"
+	"github.com/pmossman/claudew/internal/session"
+	"github.com/pmossman/claudew/internal/workspace"
 	"github.com/spf13/cobra"
 )
 
@@ -31,17 +31,33 @@ What this does:
 - Keeps the tmux session and workspace context intact
 
 Example:
-  cw restart feature-auth    # Restart specific workspace
-  cw restart                 # Interactive: select workspace to restart`,
+  claudew restart feature-auth    # Restart specific workspace
+  claudew restart                 # Interactive: select workspace to restart`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// Output immediately at start of command execution
+		fmt.Fprintf(os.Stdout, "\n")
+		os.Stdout.Sync()
+
+		var workspaceName string
+
+		// Determine workspace name first for early output
+		if len(args) > 0 {
+			workspaceName = args[0]
+			fmt.Printf("🔄 Preparing to restart workspace '%s'...\n", workspaceName)
+			fmt.Println()
+			os.Stdout.Sync() // Force flush to show output immediately
+		}
+
 		// Load config
+		fmt.Print("Loading configuration...")
+		os.Stdout.Sync()
 		cfg, err := config.Load()
 		if err != nil {
 			return fmt.Errorf("failed to load config: %w", err)
 		}
-
-		var workspaceName string
+		fmt.Println(" ✓")
+		os.Stdout.Sync()
 
 		// If no args, show interactive selector
 		if len(args) == 0 {
@@ -52,15 +68,21 @@ Example:
 			if workspaceName == "" {
 				return nil // User cancelled
 			}
-		} else {
-			workspaceName = args[0]
+			fmt.Println()
+			fmt.Printf("🔄 Preparing to restart workspace '%s'...\n", workspaceName)
+			fmt.Println()
+			os.Stdout.Sync() // Force flush to show output immediately
 		}
 
 		// Verify workspace exists
+		fmt.Print("Verifying workspace...")
+		os.Stdout.Sync()
 		_, err = cfg.GetWorkspace(workspaceName)
 		if err != nil {
 			return fmt.Errorf("workspace '%s' not found", workspaceName)
 		}
+		fmt.Println(" ✓")
+		os.Stdout.Sync()
 
 		// Prompt to save continuation before restarting
 		wsMgr := workspace.NewManager(cfg.Settings.WorkspaceDir)
@@ -78,7 +100,7 @@ Example:
 		}
 
 		if !exists {
-			return fmt.Errorf("workspace '%s' has no active tmux session. Use 'cw start %s' instead.", workspaceName, workspaceName)
+			return fmt.Errorf("workspace '%s' has no active tmux session. Use 'claudew start %s' instead.", workspaceName, workspaceName)
 		}
 
 		fmt.Println()
@@ -170,7 +192,7 @@ Example:
 		fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 		fmt.Println()
 		fmt.Println("Tip: Attach to the session with:")
-		fmt.Printf("  cw start %s\n", workspaceName)
+		fmt.Printf("  claudew start %s\n", workspaceName)
 
 		return nil
 	},
@@ -201,6 +223,7 @@ func promptSaveContinuation(wsMgr *workspace.Manager, workspaceName string) erro
 	fmt.Println("  • Press Ctrl-D (EOF) when finished")
 	fmt.Println("  • Press Enter on empty line to skip and keep existing continuation")
 	fmt.Println()
+	os.Stdout.Sync() // Force flush to ensure prompt is visible immediately
 
 	// Read multiline input
 	var lines []string

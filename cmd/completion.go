@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/pmossman/claude-workspace/internal/config"
+	"github.com/pmossman/claudew/internal/config"
 	"github.com/spf13/cobra"
 )
 
