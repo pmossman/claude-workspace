@@ -61,39 +61,41 @@ Example:
 
 		wsMgr := workspace.NewManager(cfg.Settings.WorkspaceDir)
 
-		// Show current continuation if exists
-		currentCont := wsMgr.GetContinuation(workspaceName)
-		if currentCont != "" {
-			fmt.Println()
-			fmt.Println("═══════════════════════════════════════════════════════════")
-			fmt.Println("CURRENT CONTINUATION:")
-			fmt.Println("───────────────────────────────────────────────────────────")
-			fmt.Println(currentCont)
-			fmt.Println("═══════════════════════════════════════════════════════════")
-			fmt.Println()
-		} else {
-			fmt.Println()
-			fmt.Println("No continuation currently saved.")
-			fmt.Println()
-		}
-
-		// Prompt for new continuation
-		fmt.Println("Enter continuation text (describe current work, what's done, what's next).")
-		fmt.Println("Press Ctrl-D (EOF) when finished, or Ctrl-C to cancel.")
-		fmt.Println()
-		fmt.Print("Continuation:\n")
-
-		// Read multiline input from /dev/tty
-		tty, err := os.Open("/dev/tty")
+		// Reopen /dev/tty for both reading and writing to ensure output is visible after fzf
+		tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
 		if err != nil {
-			return fmt.Errorf("failed to open /dev/tty: %w", err)
+			return fmt.Errorf("failed to open terminal: %w", err)
 		}
 		defer tty.Close()
 
+		fmt.Fprintln(tty)
+
+		// Show current continuation if exists
+		currentCont := wsMgr.GetContinuation(workspaceName)
+		if currentCont != "" {
+			fmt.Fprintln(tty, "Current continuation:")
+			fmt.Fprintln(tty, currentCont)
+			fmt.Fprintln(tty)
+		}
+
+		// Prompt for new continuation
+		fmt.Fprintln(tty, "Enter continuation text (describe current work, what's done, what's next).")
+		fmt.Fprintln(tty, "Press Ctrl-D when finished, or Enter on empty line to keep current.")
+		fmt.Fprintln(tty)
+		fmt.Fprint(tty, "> ")
+
+		// Read from the same tty
 		scanner := bufio.NewScanner(tty)
 		var lines []string
 		for scanner.Scan() {
-			lines = append(lines, scanner.Text())
+			line := scanner.Text()
+			// If first line is empty, keep existing continuation
+			if len(lines) == 0 && line == "" {
+				fmt.Fprintln(tty, "Keeping existing continuation.")
+				fmt.Fprintln(tty)
+				return nil
+			}
+			lines = append(lines, line)
 		}
 
 		if err := scanner.Err(); err != nil {
@@ -103,8 +105,8 @@ Example:
 		continuation := strings.TrimSpace(strings.Join(lines, "\n"))
 
 		if continuation == "" {
-			fmt.Println()
-			fmt.Println("No continuation entered. Cancelled.")
+			fmt.Fprintln(tty)
+			fmt.Fprintln(tty, "Keeping existing continuation.")
 			return nil
 		}
 

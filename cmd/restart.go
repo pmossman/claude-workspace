@@ -200,40 +200,39 @@ Example:
 
 // promptSaveContinuation prompts the user to save continuation before restarting
 func promptSaveContinuation(wsMgr *workspace.Manager, workspaceName string) error {
-	fmt.Println()
-	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-	fmt.Println("⚠️  USER INPUT REQUIRED")
-	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-	fmt.Println()
-	fmt.Println("Before restarting, please update the continuation to preserve")
-	fmt.Println("your current progress for the next session.")
-	fmt.Println()
+	// Reopen /dev/tty for both reading and writing to ensure output is visible after fzf
+	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+	if err != nil {
+		return fmt.Errorf("failed to open terminal: %w", err)
+	}
+	defer tty.Close()
+
+	fmt.Fprintln(tty)
+	fmt.Fprintln(tty, "Before restarting, update the continuation to preserve progress for the next session.")
+	fmt.Fprintln(tty)
 
 	// Show current continuation if exists
 	currentCont := wsMgr.GetContinuation(workspaceName)
 	if currentCont != "" {
-		fmt.Println("CURRENT CONTINUATION:")
-		fmt.Println("─────────────────────")
-		fmt.Println(currentCont)
-		fmt.Println("─────────────────────")
-		fmt.Println()
+		fmt.Fprintln(tty, "Current continuation:")
+		fmt.Fprintln(tty, currentCont)
+		fmt.Fprintln(tty)
 	}
 
-	fmt.Println("Enter new continuation (describe current work, what's done, what's next):")
-	fmt.Println("  • Press Ctrl-D (EOF) when finished")
-	fmt.Println("  • Press Enter on empty line to skip and keep existing continuation")
-	fmt.Println()
-	os.Stdout.Sync() // Force flush to ensure prompt is visible immediately
+	fmt.Fprintln(tty, "Enter new continuation (describe current work, what's done, what's next).")
+	fmt.Fprintln(tty, "Press Ctrl-D when finished, or Enter on empty line to keep current.")
+	fmt.Fprintln(tty)
+	fmt.Fprint(tty, "> ")
 
-	// Read multiline input
+	// Read from the same tty
+	scanner := bufio.NewScanner(tty)
 	var lines []string
-	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		line := scanner.Text()
-		// If first line is empty, treat as skip
+		// If first line is empty, keep existing continuation
 		if len(lines) == 0 && line == "" {
-			fmt.Println("Skipping continuation update.")
-			fmt.Println()
+			fmt.Fprintln(tty, "Keeping existing continuation.")
+			fmt.Fprintln(tty)
 			return nil
 		}
 		lines = append(lines, line)
@@ -249,9 +248,9 @@ func promptSaveContinuation(wsMgr *workspace.Manager, workspaceName string) erro
 	continuation := strings.TrimSpace(strings.Join(lines, "\n"))
 
 	if continuation == "" {
-		fmt.Println()
-		fmt.Println("⏭️  Skipped - keeping existing continuation")
-		fmt.Println()
+		fmt.Fprintln(tty)
+		fmt.Fprintln(tty, "Keeping existing continuation.")
+		fmt.Fprintln(tty)
 		return nil
 	}
 
@@ -260,10 +259,10 @@ func promptSaveContinuation(wsMgr *workspace.Manager, workspaceName string) erro
 		return fmt.Errorf("failed to save continuation: %w", err)
 	}
 
-	fmt.Println()
-	fmt.Printf("✓ Saved continuation for workspace '%s'\n", workspaceName)
-	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-	fmt.Println()
+	fmt.Fprintln(tty)
+	fmt.Fprintf(tty, "✓ Saved continuation for workspace '%s'\n", workspaceName)
+	fmt.Fprintln(tty, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	fmt.Fprintln(tty)
 
 	return nil
 }
