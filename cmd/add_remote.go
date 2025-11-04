@@ -22,21 +22,28 @@ If called without arguments, runs interactively.`,
 
 		// Interactive mode if no args provided
 		if len(args) == 0 {
-			fmt.Println()
-			fmt.Print("Remote name (e.g., 'my-app'): ")
-			fmt.Scanln(&name)
+			// Reopen /dev/tty for both reading and writing to ensure prompts are visible after fzf
+			tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+			if err != nil {
+				return fmt.Errorf("failed to open terminal: %w", err)
+			}
+			defer tty.Close()
+
+			fmt.Fprintln(tty)
+			fmt.Fprint(tty, "Remote name (e.g., 'my-app'): ")
+			fmt.Fscanln(tty, &name)
 			if name == "" {
 				return fmt.Errorf("remote name is required")
 			}
 
-			fmt.Print("Git URL (e.g., 'git@github.com:org/repo.git'): ")
-			fmt.Scanln(&url)
+			fmt.Fprint(tty, "Git URL (e.g., 'git@github.com:org/repo.git'): ")
+			fmt.Fscanln(tty, &url)
 			if url == "" {
 				return fmt.Errorf("git URL is required")
 			}
 
-			fmt.Print("Clone directory (e.g., '~/dev/my-app-clones'): ")
-			fmt.Scanln(&cloneDir)
+			fmt.Fprint(tty, "Clone directory (e.g., '~/dev/my-app-clones'): ")
+			fmt.Fscanln(tty, &cloneDir)
 			if cloneDir == "" {
 				return fmt.Errorf("clone directory is required")
 			}
