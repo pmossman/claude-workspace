@@ -139,7 +139,7 @@ Legacy mode (without clone management):
 			fmt.Printf("  Remote: %s\n", createRemote)
 		}
 		fmt.Printf("  Workspace dir: %s\n", workspaceDir)
-		fmt.Println("\nNext: claude-workspace start", name)
+		fmt.Println("\nNext: claudew start", name)
 
 		return nil
 	},

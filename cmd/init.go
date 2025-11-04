@@ -13,7 +13,7 @@ import (
 
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Initialize claude-workspace configuration",
+	Short: "Initialize claudew configuration",
 	Long:  `Creates the configuration directory and initial config file.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Check if tmux is installed
@@ -33,7 +33,7 @@ var initCmd = &cobra.Command{
 			return fmt.Errorf("failed to save config: %w", err)
 		}
 
-		fmt.Println("✓ Initialized claude-workspace")
+		fmt.Println("✓ Initialized claudew")
 		fmt.Printf("  Config directory: %s\n", cfg.Settings.WorkspaceDir)
 
 		// Check if shell integration is already installed
@@ -41,7 +41,7 @@ var initCmd = &cobra.Command{
 		if err != nil {
 			// If we can't check (unsupported shell), just show next steps
 			fmt.Println("\nNext steps:")
-			fmt.Println("  1. Install shell integration: claude-workspace install-shell")
+			fmt.Println("  1. Install shell integration: claudew install-shell")
 			fmt.Println("  2. Add a remote: claudew add-remote <name> <git-url> --clone-dir <path>")
 			fmt.Println("  3. Create a workspace: claudew create")
 			fmt.Println("\nOr use the interactive selector: cw")
@@ -63,7 +63,7 @@ var initCmd = &cobra.Command{
 				}
 			} else {
 				fmt.Println("\nSkipped shell integration. You can install it later with:")
-				fmt.Println("  claude-workspace install-shell")
+				fmt.Println("  claudew install-shell")
 			}
 		} else {
 			fmt.Println("\n✓ Shell integration already installed")

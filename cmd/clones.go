@@ -32,8 +32,8 @@ Use -i/--interactive for fzf selection to cd into a clone.`,
 
 		if len(cfg.Clones) == 0 {
 			fmt.Println("No clones registered.")
-			fmt.Println("\nCreate a clone with: claude-workspace new-clone <remote-name>")
-			fmt.Println("Or import existing: claude-workspace import-clone <remote-name> <path>")
+			fmt.Println("\nCreate a clone with: claudew new-clone <remote-name>")
+			fmt.Println("Or import existing: claudew import-clone <remote-name> <path>")
 			return nil
 		}
 

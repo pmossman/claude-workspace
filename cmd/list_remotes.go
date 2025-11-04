@@ -21,7 +21,7 @@ var listRemotesCmd = &cobra.Command{
 
 		if len(cfg.Remotes) == 0 {
 			fmt.Println("No remotes registered.")
-			fmt.Println("\nAdd a remote with: claude-workspace add-remote <name> <git-url> --clone-dir <path>")
+			fmt.Println("\nAdd a remote with: claudew add-remote <name> <git-url> --clone-dir <path>")
 			return nil
 		}
 

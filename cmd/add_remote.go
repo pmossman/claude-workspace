@@ -96,9 +96,9 @@ If called without arguments, runs interactively.`,
 		fmt.Printf("✓ Added remote '%s'\n", name)
 		fmt.Printf("  URL: %s\n", url)
 		fmt.Printf("  Clone directory: %s\n", absCloneDir)
-		fmt.Println("\nNext steps:")
-		fmt.Printf("  1. Import existing clones: claude-workspace import-clone %s <path>\n", name)
-		fmt.Printf("  2. Or create a workspace: claude-workspace create <workspace-name> --remote %s\n", name)
+		fmt.Println()
+		fmt.Println("Next: Create a workspace for this remote")
+		fmt.Println("  Run 'claudew' to open the interactive menu")
 
 		return nil
 	},

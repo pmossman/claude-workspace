@@ -27,7 +27,7 @@ var listCmd = &cobra.Command{
 
 		if len(cfg.Workspaces) == 0 {
 			fmt.Println("No workspaces found.")
-			fmt.Println("Create one with: claude-workspace create <name> <repo-path>")
+			fmt.Println("Create one with: claudew create <name> <repo-path>")
 			return nil
 		}
 
