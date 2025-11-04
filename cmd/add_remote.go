@@ -10,24 +10,53 @@ import (
 )
 
 var addRemoteCmd = &cobra.Command{
-	Use:   "add-remote <name> <git-url> --clone-dir <path>",
+	Use:   "add-remote [name] [git-url] [--clone-dir <path>]",
 	Short: "Register a remote repository",
 	Long: `Registers a remote repository for clone management.
-The clone-dir is where new clones will be created (e.g., ~/dev/airbyte-clones).`,
-	Args: cobra.ExactArgs(2),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		name := args[0]
-		url := args[1]
+The clone-dir is where new clones will be created (e.g., ~/dev/airbyte-clones).
 
-		cloneDir, _ := cmd.Flags().GetString("clone-dir")
-		if cloneDir == "" {
-			return fmt.Errorf("--clone-dir is required")
+If called without arguments, runs interactively.`,
+	Args: cobra.MaximumNArgs(2),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var name, url, cloneDir string
+
+		// Interactive mode if no args provided
+		if len(args) == 0 {
+			fmt.Println()
+			fmt.Print("Remote name (e.g., 'my-app'): ")
+			fmt.Scanln(&name)
+			if name == "" {
+				return fmt.Errorf("remote name is required")
+			}
+
+			fmt.Print("Git URL (e.g., 'git@github.com:org/repo.git'): ")
+			fmt.Scanln(&url)
+			if url == "" {
+				return fmt.Errorf("git URL is required")
+			}
+
+			fmt.Print("Clone directory (e.g., '~/dev/my-app-clones'): ")
+			fmt.Scanln(&cloneDir)
+			if cloneDir == "" {
+				return fmt.Errorf("clone directory is required")
+			}
+		} else if len(args) == 2 {
+			name = args[0]
+			url = args[1]
+			cloneDir, _ = cmd.Flags().GetString("clone-dir")
+			if cloneDir == "" {
+				return fmt.Errorf("--clone-dir is required")
+			}
+		} else {
+			return fmt.Errorf("provide either no arguments (interactive) or both name and URL with --clone-dir flag")
 		}
 
 		// Expand ~ in path
-		if cloneDir[:2] == "~/" {
+		if len(cloneDir) >= 2 && cloneDir[:2] == "~/" {
 			home, _ := os.UserHomeDir()
 			cloneDir = filepath.Join(home, cloneDir[2:])
+		} else if cloneDir == "~" {
+			cloneDir, _ = os.UserHomeDir()
 		}
 
 		// Make path absolute
