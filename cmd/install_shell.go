@@ -168,6 +168,22 @@ Use --force to reinstall if already installed (useful after updates).`,
 			return fmt.Errorf("failed to write completion setup: %w", err)
 		}
 
+		// If force installing and already installed, remove old sections first
+		if installShellForce && installed {
+			content, err := os.ReadFile(rcFile)
+			if err != nil {
+				return fmt.Errorf("failed to read %s: %w", rcFile, err)
+			}
+
+			// Remove existing claudew sections
+			newContent := removeClaudewSections(string(content))
+
+			// Write back the cleaned content
+			if err := os.WriteFile(rcFile, []byte(newContent), 0644); err != nil {
+				return fmt.Errorf("failed to write %s: %w", rcFile, err)
+			}
+		}
+
 		// Append source statements to rc file
 		f, err := os.OpenFile(rcFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 		if err != nil {
@@ -346,6 +362,67 @@ After uninstalling, you can reinstall with: claudew install-shell`,
 
 		return nil
 	},
+}
+
+// removeClaudewSections removes all claudew shell integration sections from rc file content
+func removeClaudewSections(content string) string {
+	markers := []string{
+		"# claude-workspace shell integration",
+		"# claudew shell integration",
+	}
+
+	lines := strings.Split(content, "\n")
+	var newLines []string
+	skipUntilBlank := false
+
+	for i, line := range lines {
+		// Check if this line is a marker
+		isMarker := false
+		for _, marker := range markers {
+			if strings.Contains(line, marker) {
+				isMarker = true
+				skipUntilBlank = true
+				break
+			}
+		}
+
+		if isMarker {
+			// Skip this line and start looking for the end of the section
+			continue
+		}
+
+		if skipUntilBlank {
+			// Skip until we hit a blank line
+			trimmed := strings.TrimSpace(line)
+
+			if trimmed == "" {
+				// Found blank line - check if next line is also integration-related
+				if i+1 < len(lines) {
+					nextLine := strings.TrimSpace(lines[i+1])
+					// If next line is a known integration marker, keep skipping
+					isNextMarker := false
+					for _, marker := range markers {
+						if strings.Contains(nextLine, marker) {
+							isNextMarker = true
+							break
+						}
+					}
+					if isNextMarker {
+						continue // Keep skipping
+					}
+				}
+				skipUntilBlank = false
+				newLines = append(newLines, line) // Keep the blank line
+			}
+			// Skip lines that look like integration content
+			continue
+		}
+
+		// Keep this line
+		newLines = append(newLines, line)
+	}
+
+	return strings.Join(newLines, "\n")
 }
 
 func init() {
