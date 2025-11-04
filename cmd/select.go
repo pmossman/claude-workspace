@@ -97,8 +97,10 @@ func buildActionMenuItems(cfg *config.Config) []string {
 	// Add section header
 	lines = append(lines, colorGray+"──── ACTIONS ────"+colorReset)
 
-	// Add create workspace action
-	lines = append(lines, colorBlue+"→"+colorReset+" Create new workspace")
+	// Add create workspace action only if there are remotes
+	if len(cfg.Remotes) > 0 {
+		lines = append(lines, colorBlue+"→"+colorReset+" Create new workspace")
+	}
 
 	// Add workspace management actions if there are workspaces
 	if len(cfg.Workspaces) > 0 {
@@ -115,11 +117,14 @@ func buildActionMenuItems(cfg *config.Config) []string {
 		lines = append(lines, fmt.Sprintf(colorBlue+"→"+colorReset+" Browse clones "+colorGray+"(%d available)"+colorReset, len(cfg.Clones)))
 	}
 
-	// Add remote-related actions if remotes exist
+	// Add remote-related actions
 	if len(cfg.Remotes) > 0 {
 		lines = append(lines, fmt.Sprintf(colorBlue+"→"+colorReset+" Create new clone "+colorGray+"(%d remotes)"+colorReset, len(cfg.Remotes)))
 		lines = append(lines, fmt.Sprintf(colorBlue+"→"+colorReset+" List remotes "+colorGray+"(%d)"+colorReset, len(cfg.Remotes)))
 	}
+
+	// Always show "Add remote" action
+	lines = append(lines, colorBlue+"→"+colorReset+" Add remote")
 
 	return lines
 }
@@ -286,6 +291,9 @@ func handleAction(cfg *config.Config, action string) error {
 
 	case strings.HasPrefix(action, "→ List remotes"):
 		return listRemotesCmd.RunE(nil, []string{})
+
+	case strings.HasPrefix(action, "→ Add remote"):
+		return addRemoteCmd.RunE(nil, []string{})
 
 	default:
 		return fmt.Errorf("unknown action: %s", action)
@@ -701,6 +709,20 @@ var previewMenuCmd = &cobra.Command{
 			fmt.Println("  • Git URL")
 			fmt.Println("  • Clone base directory")
 			fmt.Println("  • Number of clones")
+			return nil
+		}
+
+		if strings.HasPrefix(selection, "→ Add remote") {
+			fmt.Println("Register a new remote repository.")
+			fmt.Println()
+			fmt.Println("This will prompt for:")
+			fmt.Println("  • Remote name (e.g., 'my-app')")
+			fmt.Println("  • Git URL (e.g., 'git@github.com:org/repo.git')")
+			fmt.Println("  • Clone directory (where to store clones)")
+			fmt.Println()
+			fmt.Println("After registering, you can:")
+			fmt.Println("  • Create workspaces for this remote")
+			fmt.Println("  • Create additional clones as needed")
 			return nil
 		}
 
