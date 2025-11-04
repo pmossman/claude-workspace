@@ -2,6 +2,12 @@
 # claudew completion setup for zsh
 # This file is installed to ~/.claudew/completion.zsh by 'claudew install-shell'
 
+# Initialize completion system if not already done
+if ! type compdef >/dev/null 2>&1; then
+  autoload -Uz compinit
+  compinit
+fi
+
 # Add completion directory to fpath
 fpath=(~/.zsh/completion $fpath)
 
