@@ -192,9 +192,8 @@ Use --force to reinstall if already installed (useful after updates).`,
 		defer f.Close()
 
 		rcAdditions := fmt.Sprintf(`
-# claudew shell integration - managed by 'claudew install-shell'
-[ -f %s ] && source %s
-[ -f %s ] && source %s
+[ -f %s ] && source %s # claudew-managed
+[ -f %s ] && source %s # claudew-managed
 `, shellIntegrationPath, shellIntegrationPath, completionSetupPath, completionSetupPath)
 
 		if _, err := f.WriteString(rcAdditions); err != nil {
@@ -364,61 +363,17 @@ After uninstalling, you can reinstall with: claudew install-shell`,
 	},
 }
 
-// removeClaudewSections removes all claudew shell integration sections from rc file content
+// removeClaudewSections removes all claudew-managed lines from rc file content
 func removeClaudewSections(content string) string {
-	markers := []string{
-		"# claude-workspace shell integration",
-		"# claudew shell integration",
-	}
-
 	lines := strings.Split(content, "\n")
 	var newLines []string
-	skipUntilBlank := false
 
-	for i, line := range lines {
-		// Check if this line is a marker
-		isMarker := false
-		for _, marker := range markers {
-			if strings.Contains(line, marker) {
-				isMarker = true
-				skipUntilBlank = true
-				break
-			}
-		}
-
-		if isMarker {
-			// Skip this line and start looking for the end of the section
+	for _, line := range lines {
+		// Skip any line with the claudew-managed marker
+		if strings.Contains(line, "# claudew-managed") {
 			continue
 		}
-
-		if skipUntilBlank {
-			// Skip until we hit a blank line
-			trimmed := strings.TrimSpace(line)
-
-			if trimmed == "" {
-				// Found blank line - check if next line is also integration-related
-				if i+1 < len(lines) {
-					nextLine := strings.TrimSpace(lines[i+1])
-					// If next line is a known integration marker, keep skipping
-					isNextMarker := false
-					for _, marker := range markers {
-						if strings.Contains(nextLine, marker) {
-							isNextMarker = true
-							break
-						}
-					}
-					if isNextMarker {
-						continue // Keep skipping
-					}
-				}
-				skipUntilBlank = false
-				newLines = append(newLines, line) // Keep the blank line
-			}
-			// Skip lines that look like integration content
-			continue
-		}
-
-		// Keep this line
+		// Keep all other lines
 		newLines = append(newLines, line)
 	}
 
